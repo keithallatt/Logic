@@ -66,6 +66,8 @@ class Atom(Evaluable):
         self.name = name
 
     def __bool__(self):
+        if self.truth_value is None:
+            return False
         return self.truth_value
     
     def set_atom_truth_values(self, context):
