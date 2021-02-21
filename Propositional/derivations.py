@@ -82,13 +82,13 @@ class Derivation:
 
             for axiom in self.axioms:
                 set_atoms_truth_value(axiom, atom_ordered)
-                axioms_and_assumptions = axioms_and_assumptions and axiom.evaluate()
+                axioms_and_assumptions = axioms_and_assumptions and bool(axiom)
             for assumption in self.assumptions:
                 set_atoms_truth_value(assumption, atom_ordered)
-                axioms_and_assumptions = axioms_and_assumptions and assumption.evaluate()
+                axioms_and_assumptions = axioms_and_assumptions and bool(assumption)
 
             set_atoms_truth_value(self.consequence, atom_ordered)
-            valid = self.consequence.evaluate() or not axioms_and_assumptions
+            valid = bool(self.consequence) or not axioms_and_assumptions
 
             if not valid:
                 counter_example = ", ".join([

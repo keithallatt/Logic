@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import abstractmethod
 from typing import Union, Callable
+import warnings
 
 # Unicode logical symbols (propositional logic)
 LOGICAL_SYMBOLS = {
@@ -29,7 +30,7 @@ ENFORCE_BINARY_OPERATIONS = True
 class Evaluable:
     """ A boolean evaluable expression. """
     @abstractmethod
-    def evaluate(self):
+    def __bool__(self):
         pass
 
     def __and__(self, other):
@@ -57,7 +58,6 @@ class Evaluable:
         return LogicalIff(self, other)
 
 
-
 class Atom(Evaluable):
     """ Logical Atom. Represents a variable / truth value.
         This is the smallest unit in 0th order logic. """
@@ -65,7 +65,7 @@ class Atom(Evaluable):
         self.truth_value = truth_value
         self.name = name
 
-    def evaluate(self):
+    def __bool__(self):
         return self.truth_value
     
     def set_atom_truth_values(self, context):
@@ -141,7 +141,7 @@ class LogicalConnective(Evaluable):
         self.exempt = exempt_bin_rest
 
     @abstractmethod
-    def evaluate(self):
+    def __bool__(self):
         pass
 
     def replace(self, old: Evaluable, new: Evaluable):
@@ -217,16 +217,15 @@ def __generate_connective__(name: str, func: Callable, **kwargs):
             super().__init__(*components, **kwargs)
             self.name = name
 
-        def evaluate(self):
-            truth_values = [c.evaluate() for c in self.components]
+        def __bool__(self):
+            truth_values = [bool(c) for c in self.components]
             return func(*truth_values)
-        
+
         def __str__(self):
             return super().__str__()
 
         def __repr__(self):
             return super().__str__()
-
 
     return GenericLogical
 
