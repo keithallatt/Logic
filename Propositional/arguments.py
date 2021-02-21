@@ -1,4 +1,4 @@
-from logical import *
+from Propositional.logical import *
 import warnings
 import inspect
 import sys
