@@ -22,6 +22,18 @@ class Derivation:
     def is_valid(self):
         return self.get_counter_example() is None
 
+    def __str__(self):
+        axioms = "; ".join([
+            str(axiom) for axiom in self.axioms
+        ] + [
+            "["+str(assumption)+"]" for assumption in self.assumptions
+        ])
+        
+        return " ".join([axioms, LOGICAL_SYMBOLS['proves'], str(self.consequence)])
+            
+    def __repr__(self):
+        return self.__str__()
+    
     def get_counter_example(self):
         """ In logic, more precisely in deductive reasoning, an argument is valid if and only if
             it is takes a form that makes it impossible for the premises to be true and the
@@ -345,6 +357,14 @@ class ConditionalDerivation(Derivation):
 
         super().__init__("Conditional Derivation", axioms,
                          assumptions, new_consequence, derivation)
+
+    def __str__(self):
+        string_repr = super().__str__()
+        
+        return " ".join([string_repr.split(LOGICAL_SYMBOLS['proves'])[0].strip(), LOGICAL_SYMBOLS['proves'], str(self.old_consequence)])
+            
+    def __repr__(self):
+        return self.__str__()
 
     def verify(self):
         try:
