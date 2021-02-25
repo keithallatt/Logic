@@ -78,7 +78,8 @@ class Derivation:
             next_prop = propositions.pop()
 
             if type(next_prop) is Atom:
-                atom_bank.update({next_prop: False})
+                if next_prop.name not in [str(atom) for atom in atom_bank.keys()]:
+                    atom_bank.update({next_prop: False})
             else:
                 propositions += list(next_prop.components)
 
@@ -312,7 +313,7 @@ class DirectDerivation(Derivation):
         axiom_and_consequence = " ".join(["; ".join([str(axiom)
                                                      for axiom in sorted(list(set(self.axioms)),
                                                                          key=lambda x: x.name)]),
-                                          LOGICAL_SYMBOLS['proves'],
+                                          TRUTH_SYMBOLS['proves'],
                                           str(self.consequence)])
 
         max_line_len = max([
@@ -433,7 +434,7 @@ class IndirectDerivation(Derivation):
                                                      for axiom in sorted(list(set(self.axioms)),
                                                                          key=lambda x: x.name)
                                                      if axiom not in set(self.assumptions)]),
-                                          LOGICAL_SYMBOLS['proves'],
+                                          TRUTH_SYMBOLS['proves'],
                                           str(self.consequence)])
 
         consequence = str(self.consequence)

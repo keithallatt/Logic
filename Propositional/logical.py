@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import abstractmethod
 from typing import Union, Callable
+from collections import Counter
 import warnings
 
 # Unicode logical symbols (propositional logic)
@@ -9,7 +10,16 @@ LOGICAL_SYMBOLS = {
     "or": u'\u2228',
     "implies": u'\u2192',
     "iff": u'\u2194',
-    "not": u'\u00AC',
+    "not": u'\u00AC'
+}
+
+TRUTH_SYMBOLS = {
+    't': u'\u22A4',
+    'f': u'\u22A5',
+    'true': u'\u22A4',
+    'false': u'\u22A5',
+    'tautology': u'\u22A4',
+    'falsehood': u'\u22A5',
     "proves": u'\u22A2',
     "models": u'\u22A8'
 }
@@ -57,6 +67,99 @@ class Evaluable:
     def __xor__(self, other):
         return LogicalIff(self, other)
 
+    def atoms_contained(self):
+        return []
+
+    def truth_table(self, atomics, regen=False):
+        return []
+
+    def truth_hash(self, atomics, regen=False):
+        return -1
+
+    def equiv(self, other: Evaluable, regen=False):
+        self_atoms = set(self.atoms_contained())
+        other_atoms = set(other.atoms_contained())
+        atomics = list(self_atoms.union(other_atoms))
+
+        self_truth = self.truth_table(atomics, regen)
+        other_truth = other.truth_table(atomics, regen)
+
+        self_str = {
+            str(_) for _ in self_truth
+        }
+        other_str = {
+            str(_) for _ in other_truth
+        }
+
+        diff = self_str.difference(other_str).union(other_str.difference(self_str))
+
+        return diff == set()
+
+    def __hash__(self):
+        return hash(self.__str__())
+
+
+class Tautology(Evaluable):
+    def __bool__(self):
+        return True
+
+    def __str__(self):
+        return TRUTH_SYMBOLS['tautology']
+
+    def atoms_contained(self):
+        return []
+
+    def truth_table(self, atomics, regen=False):
+        truth_table = []
+        for i in range(2 ** len(atomics)):
+            context = {atomics[a]: (i & 1 << a) != 0 for a in range(len(atomics))}
+
+            lst = []
+            names = []
+            for k in sorted(list(context.keys())):
+                if k.name not in names:
+                    lst.append((Atom(k.name), context[k]))
+                    names.append(k.name)
+
+            truth_table.append(
+                (lst, bool(self))
+            )
+        return truth_table
+
+    def truth_hash(self, atomics, regen=False):
+        return 2 ** len(atomics) - 1
+
+
+class Falsehood(Evaluable):
+    def __bool__(self):
+        return False
+
+    def __str__(self):
+        return TRUTH_SYMBOLS['falsehood']
+
+    def atoms_contained(self):
+        return []
+
+    def truth_table(self, atomics, regen=False):
+        truth_table = []
+        for i in range(2 ** len(atomics)):
+            context = {atomics[a]: (i & 1 << a) != 0 for a in range(len(atomics))}
+
+            lst = []
+            names = []
+            for k in sorted(list(context.keys())):
+                if k.name not in names:
+                    lst.append((Atom(k.name), context[k]))
+                    names.append(k.name)
+
+            truth_table.append(
+                (lst, bool(self))
+            )
+        return truth_table
+
+    def truth_hash(self, atomics, regen=False):
+        return 0
+
 
 class Atom(Evaluable):
     """ Logical Atom. Represents a variable / truth value.
@@ -64,12 +167,17 @@ class Atom(Evaluable):
     def __init__(self, name: str, truth_value: bool = None):
         self.truth_value = truth_value
         self.name = name
+        self.truth_table_cached = None
+        self.truth_hash_cached = None
 
     def __bool__(self):
         if self.truth_value is None:
             return False
         return self.truth_value
-    
+
+    def atoms_contained(self):
+        return [self]
+
     def set_atom_truth_values(self, context):
         for c in context.keys():
             if c.name == self.name:
@@ -77,6 +185,50 @@ class Atom(Evaluable):
                 break
         else:
             raise LogicalException("Missing key:" + str(self))
+
+    def truth_table(self, atomics, regen=False):
+        if self.truth_table_cached is None or regen:
+            truth_table = []
+            for i in range(2 ** len(atomics)):
+                context = {atomics[a]: (i & 1 << a) != 0 for a in range(len(atomics))}
+                self.set_atom_truth_values(context)
+
+                lst = []
+                names = []
+                for k in sorted(list(context.keys())):
+                    if k.name not in names:
+                        lst.append((Atom(k.name), context[k]))
+                        names.append(k.name)
+
+                truth_table.append(
+                    (lst, bool(self))
+                )
+
+            self.truth_table_cached = truth_table
+        return self.truth_table_cached
+
+    def truth_hash(self, atomics, regen=False):
+        if self.truth_hash_cached is None or regen:
+            truth = self.truth_table(atomics, regen)
+
+            truth = [
+                (sorted(elem[0], key=lambda x: x[0]), elem[1]) for elem in truth
+            ]
+
+            truth = [
+                (sum([
+                    (1 << i if elem[0][i][1] else 0) for i in range(len(atomics))
+                ]), elem[1]) for elem in truth
+            ]
+
+            truth = sorted(truth, key=lambda x: x[0])
+
+            t_hash = ([
+                (1 << i if truth[i][1] else 0) for i in range(len(truth))
+            ])
+
+            self.truth_hash_cached = sum(t_hash)
+        return self.truth_hash_cached
 
     def __eq__(self, other):
         return type(other) == Atom and \
@@ -120,6 +272,8 @@ class LogicalConnective(Evaluable):
         """
 
         self.components = components
+        self.truth_table_cached = None
+        self.truth_hash_cached = None
 
         if ENFORCE_BINARY_OPERATIONS and not exempt_bin_rest:
             # enforcing binary, not exempt, therefore check.
@@ -141,12 +295,15 @@ class LogicalConnective(Evaluable):
 
         self.name = "Generic"
         self.exempt = exempt_bin_rest
+        self.func = None
 
     @abstractmethod
     def __bool__(self):
         pass
 
     def replace(self, old: Evaluable, new: Evaluable):
+
+        # re calculate truth table
         pass
 
     def atoms_contained(self):
@@ -154,20 +311,71 @@ class LogicalConnective(Evaluable):
 
         for component in self.components:
             if type(component) is Atom:
-                atoms.append(component)
+                if component not in atoms:
+                    atoms.append(component)
             else:
                 component: LogicalConnective
-                atoms += component.atoms_contained()
 
-        atoms = [
-            atoms[i] for i in range(len(atoms)) if atoms.index(atoms[i]) == i
-        ]
+                for atom in component.atoms_contained():
+                    if atom not in atoms:
+                        atoms.append(atom)
 
         return atoms
 
     def set_atom_truth_values(self, context):
         for component in self.components:
             component.set_atom_truth_values(context)
+
+    def truth_table(self, atomics: list[Atom], regen: bool = False):
+        if self.truth_table_cached is not None:
+            atoms = [
+                elem[0].name for elem in self.truth_table_cached[0][0]
+            ]
+            if set(atoms) != set([a.name for a in atomics]):
+                regen = True
+
+        if self.truth_table_cached is None or regen:
+            truth_table = []
+            for i in range(2 ** len(atomics)):
+                context = {atomics[a]: (i & 1 << a) != 0 for a in range(len(atomics))}
+                self.set_atom_truth_values(context)
+
+                lst = []
+                names = []
+                for k in sorted(list(context.keys())):
+                    if k.name not in names:
+                        lst.append((Atom(k.name), context[k]))
+                        names.append(k.name)
+
+                truth_table.append(
+                    (lst, bool(self))
+                )
+
+            self.truth_table_cached = truth_table
+        return self.truth_table_cached
+
+    def truth_hash(self, atomics, regen=False):
+        if self.truth_hash_cached is None or regen:
+            truth = self.truth_table(atomics, regen)
+
+            truth = [
+                (sorted(elem[0], key=lambda x: x[0]), elem[1]) for elem in truth
+            ]
+
+            truth = [
+                (sum([
+                    (1 << i if elem[0][i][1] else 0) for i in range(len(atomics))
+                ]), elem[1]) for elem in truth
+            ]
+
+            truth = sorted(truth, key=lambda x: x[0])
+
+            t_hash = ([
+                    (1 << i if truth[i][1] else 0) for i in range(len(truth))
+                ])
+
+            self.truth_hash_cached = sum(t_hash)
+        return self.truth_hash_cached
 
     def __eq__(self, other):
         if not issubclass(type(other), LogicalConnective):
@@ -218,6 +426,7 @@ def __generate_connective__(name: str, func: Callable, **kwargs):
         def __init__(self, *components: Union[Evaluable]):
             super().__init__(*components, **kwargs)
             self.name = name
+            self.func = func
 
         def __bool__(self):
             truth_values = [bool(c) for c in self.components]
@@ -318,7 +527,3 @@ def parse_logical(str_repr: str,
         return LogicalNot(sections[1])
     else:
         raise LogicalException(f"Unrecognized operation: {operation}")
-
-
-if __name__ == '__main__':
-    print(parse_logical("B and (A or B)"))
