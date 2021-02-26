@@ -37,11 +37,11 @@ class Argument:
         return set(self.ls) == set(other.ls)
 
     @abstractmethod
-    def is_applicable(self) -> Union[Evaluable, None]:
+    def get_application(self) -> Union[Evaluable, None]:
         pass
 
     def apply(self):
-        if (application := self.is_applicable()) is not None:
+        if (application := self.get_application()) is not None:
             return application
         else:
             raise LogicalException(f"No application of {self.argument_name} found.")
@@ -57,7 +57,7 @@ class Contradiction(Argument):
     def __init__(self, p: Evaluable, not_p: Evaluable):
         super().__init__("Contradiction", p, not_p)
 
-    def is_applicable(self) -> Union[Evaluable, None]:
+    def get_application(self) -> Union[Evaluable, None]:
         p, not_p = self.ls[:2]
         if p == LogicalNot(not_p) or LogicalNot(p) == not_p:
             raise LogicalException("Contradiction")
@@ -74,7 +74,7 @@ class Repeat(Argument):
     def __init__(self, l1: Evaluable):
         super().__init__("Repetition", l1)
 
-    def is_applicable(self) -> Union[Evaluable, None]:
+    def get_application(self) -> Union[Evaluable, None]:
         return self.l1
 
 
@@ -85,7 +85,7 @@ class ModusPonens(Argument):
     def __init__(self, l1: Evaluable, l2: Evaluable):
         super().__init__("Modus Ponens", l1, l2)
 
-    def is_applicable(self) -> Union[Evaluable, None]:
+    def get_application(self) -> Union[Evaluable, None]:
         if type(self.l1) is LogicalImplies:
             self.l1: LogicalConnective
             premise = self.l1.components[0]
@@ -111,7 +111,7 @@ class ModusTollens(Argument):
     def __init__(self, l1: Evaluable, l2: Evaluable):
         super().__init__("Modus Tollens", l1, l2)
 
-    def is_applicable(self) -> Union[Evaluable, None]:
+    def get_application(self) -> Union[Evaluable, None]:
         if type(self.l1) is LogicalImplies:
             self.l1: LogicalConnective
             premise = self.l1.components[0]
@@ -137,7 +137,7 @@ class HypotheticalSyllogism(Argument):
     def __init__(self, l1: Evaluable, l2: Evaluable):
         super().__init__("Modus Tollens", l1, l2)
 
-    def is_applicable(self) -> Union[Evaluable, None]:
+    def get_application(self) -> Union[Evaluable, None]:
         if type(self.l1) is LogicalImplies and type(self.l2) is LogicalImplies:
             p = self.l1.components[0]
             q1 = self.l1.components[1]
@@ -158,7 +158,7 @@ class ModusTollendoPonens(Argument):
     def __init__(self, l1: Evaluable, l2: Evaluable):
         super().__init__("Modus Tollendo Ponens", l1, l2)
 
-    def is_applicable(self) -> Union[Evaluable, None]:
+    def get_application(self) -> Union[Evaluable, None]:
         if type(self.l1) is LogicalOr:
             p, q = self.l1.components[:2]
 
@@ -184,9 +184,9 @@ class Simplification(Argument):
     def __init__(self, l1: Evaluable, l2: Evaluable):
         super().__init__("Simplification", l1, l2)
         self.rp = []
-        self.is_applicable()
+        self.get_application()
 
-    def is_applicable(self) -> Union[Evaluable, None]:
+    def get_application(self) -> Union[Evaluable, None]:
         if type(self.l1) is LogicalAnd:
             p, q = self.l1.components[:2]
 
@@ -218,7 +218,7 @@ class Addition(Argument):
     def __init__(self, l1: Evaluable, l2: Evaluable):
         super().__init__("Addition", l1, l2)
 
-    def is_applicable(self) -> Union[Evaluable, None]:
+    def get_application(self) -> Union[Evaluable, None]:
         if type(self.l1) is LogicalOr:
             p, q = self.l1.components[:2]
 
@@ -246,7 +246,7 @@ class DoubleNegation(Argument):
     def __init__(self, l1: Evaluable, l2: Evaluable):
         super().__init__("Double Negation", l1, l2)
 
-    def is_applicable(self) -> Union[Evaluable, None]:
+    def get_application(self) -> Union[Evaluable, None]:
         if self.l1 == LogicalNot(LogicalNot(self.l2)) or \
                 LogicalNot(LogicalNot(self.l1)) == self.l2:
             return self.l2
@@ -266,9 +266,9 @@ class BidirectionalConditional(Argument):
     def __init__(self, l1: Evaluable, l2: Evaluable):
         super().__init__("Bidirectional Conditional", l1, l2)
         self.rp = []
-        self.is_applicable()
+        self.get_application()
 
-    def is_applicable(self) -> Union[Evaluable, None]:
+    def get_application(self) -> Union[Evaluable, None]:
         if type(self.l1) is LogicalIff and type(self.l2) is LogicalImplies:
             # first two are elimination
             p1, q1 = self.l1.components[:2]

@@ -29,7 +29,7 @@ class Derivation:
             "["+str(assumption)+"]" for assumption in self.assumptions
         ])
         
-        return " ".join([axioms, LOGICAL_SYMBOLS['proves'], str(self.consequence)])
+        return " ".join([axioms, TRUTH_SYMBOLS['proves'], str(self.consequence)])
             
     def __repr__(self):
         return self.__str__()
@@ -362,7 +362,7 @@ class ConditionalDerivation(Derivation):
     def __str__(self):
         string_repr = super().__str__()
         
-        return " ".join([string_repr.split(LOGICAL_SYMBOLS['proves'])[0].strip(), LOGICAL_SYMBOLS['proves'], str(self.old_consequence)])
+        return " ".join([string_repr.split(TRUTH_SYMBOLS['proves'])[0].strip(), TRUTH_SYMBOLS['proves'], str(self.old_consequence)])
             
     def __repr__(self):
         return self.__str__()
@@ -377,7 +377,7 @@ class ConditionalDerivation(Derivation):
                                                      for axiom in sorted(list(set(self.axioms)),
                                                                          key=lambda x: x.name)
                                                      if axiom not in set(self.assumptions)]),
-                                          LOGICAL_SYMBOLS['proves'],
+                                          TRUTH_SYMBOLS['proves'],
                                           str(self.old_consequence)])
 
         consequence = str(self.old_consequence)

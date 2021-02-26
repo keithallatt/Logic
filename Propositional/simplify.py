@@ -7,13 +7,17 @@ PL = parse_logical
 
 
 class Diagnostics:
-    def __init__(self, starting_proposition: Evaluable, simplification: Evaluable, considerations: int,
-                 number_pruned: int, time_taken: float):
+    def __init__(self, starting_proposition: Evaluable, simplification: Evaluable,
+                 considerations: int = None,
+                 number_pruned: int = None,
+                 time_taken: float = None,
+                 negate_flush_passes: int = None):
         self.starting_proposition = starting_proposition
         self.simplification = simplification
         self.considerations = considerations
         self.number_pruned = number_pruned
         self.time_taken = time_taken
+        self.negate_flush_passes = negate_flush_passes
 
     @staticmethod
     def time_taken_formatter(seconds: float):
@@ -39,20 +43,39 @@ class Diagnostics:
     def __str__(self):
         representation = f"""
         Diagnostics
-        ---------------------
+        ---------------
         Starting proposition: {self.starting_proposition}
-        Simplified proposition: {self.simplification}
-        Considered {self.considerations} propositions.
-        Pruned {self.number_pruned}.
-        Took {Diagnostics.time_taken_formatter(self.time_taken)}
+        Ending proposition: {self.simplification}
         """
+        if self.considerations is not None:
+            representation += f"""
+            Considered {self.considerations} propositions.
+            """
+        if self.number_pruned is not None:
+            representation += f"""
+            Pruned {self.number_pruned}.
+            """
+        if self.time_taken is not None:
+            representation += f"""
+            Took {Diagnostics.time_taken_formatter(self.time_taken)}
+            """
+        if self.negate_flush_passes is not None:
+            representation += f"""
+            Went  to {self.negate_flush_passes} connectives/atoms.
+            """
 
-        return "\n".join([x.lstrip() for x in representation.strip().split("\n")])
+        border = "+----------------"
+
+        return f"{border}\n| " + "\n| ".join(
+            [_.lstrip() for _ in representation.strip().split("\n") if _.strip() != ""]
+        ).replace("| -", "+--") + f"\n{border}"
+
 
 class Simplification:
     def __init__(self, proposition: Evaluable):
         self.proposition = proposition
         self.simplified = None
+        self.diagnostics = None
 
     def simplify(self, verbose) -> Evaluable:
         pass
@@ -70,12 +93,23 @@ class BFS(Simplification):
         super().__init__(proposition)
         self.diagnostics = None
 
-    def simplify(self, verbose=True, filter_logically_equivalent=False, stop_at=None) -> Evaluable:
+    def simplify(self, verbose: Union[bool, str] = True,
+                 filter_logically_equivalent: bool = False,
+                 stop_at: bool = None) -> Evaluable:
+
+        progress_bar = (verbose == 'progress bar')
+        if progress_bar:
+            verbose = False
+
         start_time = time.time()
 
         if issubclass(type(self.proposition), Atom):
             self.diagnostics = Diagnostics(
-                self.proposition, self.proposition, 0, 0, time.time() - start_time
+                starting_proposition=self.proposition,
+                simplification=self.proposition,
+                considerations=0,
+                number_pruned=0,
+                time_taken=time.time() - start_time
             )
             return self.proposition
         elif issubclass(type(self.proposition), LogicalConnective):
@@ -144,13 +178,48 @@ class BFS(Simplification):
             if self.proposition.equiv(option):
                 return_value = option
                 #########
+        # Print iterations progress
+        def print_progress_bar(iteration, total, prefix='', suffix='', decimals=1,
+                               length=100, fill='█', print_end=""):
+            """
+            Call in a loop to create terminal progress bar
+            @params:
+                iteration   - Required  : current iteration (Int)
+                total       - Required  : total iterations (Int)
+                prefix      - Optional  : prefix string (Str)
+                suffix      - Optional  : suffix string (Str)
+                decimals    - Optional  : positive number of decimals in percent complete (Int)
+                length      - Optional  : character length of bar (Int)
+                fill        - Optional  : bar fill character (Str)
+                print_end   - Optional  : end character (e.g. "\r", "\r\n") (Str)
+            """
+            percent = ("{0:." + str(decimals) + "f}").format(
+                100 * (iteration / float(total)))
+            filled_length = int(length * iteration // total)
+            bar = fill * filled_length + '-' * (length - filled_length)
+            print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=print_end)
+            # Print New Line on Complete
+            if iteration == total:
+                print()
 
         if return_value is None:
+            if progress_bar:
+                print()
+
             while not to_consider.empty():
                 t_start = time.time()
                 # print([x[-1] for x in to_consider.queue])
                 next_connective = to_consider.get()[-1]
                 next_connective: Evaluable
+
+                if progress_bar:
+                    print_progress_bar(
+                        iteration=len(str(next_connective)),
+                        total=len(str(self.proposition))+1,
+                        prefix='BFS',
+                        suffix=f" / {considered = } (T={(time.time()-t_init):.8})"
+                    )
+                    #######
 
                 next_connective.truth_hash(atomics, regen=True)
 
@@ -200,7 +269,9 @@ class BFS(Simplification):
                 # prevent double negations.
                 if type(next_connective) != LogicalNot:
                     not_connective = LogicalNot(next_connective)
-                    new_considerations.append((len(str(not_connective)), next(unique), not_connective))
+                    new_considerations.append(
+                        (len(str(not_connective)), next(unique), not_connective)
+                    )
 
                 t_not = time.time()
 
@@ -296,19 +367,141 @@ class BFS(Simplification):
         if return_value is None:
             return_value = self.proposition
 
+        if progress_bar:
+            print_progress_bar(
+                iteration=len(str(self.proposition)),
+                total=len(str(self.proposition)),
+                prefix='BFS',
+                suffix=f" / {considered = } (T={(time.time() - t_init):.8})"
+            )
+            #######
+            print()
+
         self.diagnostics = Diagnostics(
-            self.proposition, return_value, considered, pruned, time.time() - start_time
+            starting_proposition=self.proposition,
+            simplification=return_value,
+            considerations=considered,
+            number_pruned=pruned,
+            time_taken=time.time() - start_time
         )
 
         return return_value
 
 
-if __name__ == '__main__':
-    prop = PL("(not A) or B")
+class FlushNegation(Simplification):
+    """
+    Flush negations down to the atomic level.
 
-    v = False
+    ¬(A → B) -> (A ∧ ¬B)
+    ¬(A ∨ B) -> (¬A ∧ ¬B)
+    ¬(A ∧ B) -> (¬A ∨ ¬B)
+    ¬(A ↔ B) -> ((A ∧ ¬B) ∨ (¬A ∧ B))
+
+
+    """
+    def __init__(self, proposition: Evaluable):
+        super().__init__(proposition)
+
+    def flush_negation(self, proposition, negate=False, verbose=False) -> (Evaluable, int):
+        # if negation, we're passing down a not into the proposition, otherwise just flush as usual
+
+        if verbose:
+            print(proposition, f"<-- {negate = }")
+
+        if type(proposition) is Atom:
+            # return ¬A if we're negating otherwise A
+            return (LogicalNot(proposition) if negate else proposition), 1
+        elif type(proposition) is LogicalNot:
+            inside = proposition.components[0]
+            # if negate is True, and is not, so flip negate to False,
+            # and set proposition to inside
+            # if negate is False, and is not, so flip negate to True,
+            # and set proposition to inside
+            negation, depth = self.flush_negation(inside, negate=not negate, verbose=verbose)
+            return negation, depth + 1
+
+        elif type(proposition) is LogicalAnd:
+            a, b = proposition.components[:2]
+            flush_a, depth_a = self.flush_negation(a, negate=negate, verbose=verbose)
+            flush_b, depth_b = self.flush_negation(b, negate=negate, verbose=verbose)
+
+            if negate:
+                return LogicalOr(flush_a, flush_b), depth_a + depth_b + 1
+            else:
+                return LogicalAnd(flush_a, flush_b), depth_a + depth_b + 1
+
+        elif type(proposition) is LogicalOr:
+            a, b = proposition.components[:2]
+            flush_a, depth_a = self.flush_negation(a, negate=negate, verbose=verbose)
+            flush_b, depth_b = self.flush_negation(b, negate=negate, verbose=verbose)
+
+            if negate:
+                return LogicalAnd(flush_a, flush_b), depth_a + depth_b + 1
+            else:
+                return LogicalOr(flush_a, flush_b), depth_a + depth_b + 1
+
+        elif type(proposition) is LogicalImplies:
+            a, b = proposition.components[:2]
+            flush_a, depth_a = self.flush_negation(a, negate=False, verbose=verbose)
+
+            if negate:
+                flush_negate_b, depth_b = self.flush_negation(b, negate=negate, verbose=verbose)
+                return LogicalAnd(flush_a, flush_negate_b), depth_a + depth_b + 1
+            else:
+                flush_b, depth_b = self.flush_negation(b, negate=negate, verbose=verbose)
+                return LogicalImplies(flush_a, flush_b), depth_a + depth_b + 1
+
+        elif type(proposition) is LogicalIff:
+            a, b = proposition.components[:2]
+
+            # if negate, then these are
+            flush_negate_a, depth_a_n = self.flush_negation(a, negate=negate, verbose=verbose)
+            flush_a, depth_a = self.flush_negation(a, negate=False, verbose=verbose)
+            flush_b, depth_b = self.flush_negation(b, negate=False, verbose=verbose)
+
+            if negate:
+                return LogicalIff(flush_negate_a, flush_b), depth_b + depth_a_n + 1
+            else:
+                return LogicalIff(flush_a, flush_b), depth_a + depth_b + 1
+
+        # raise logical exception if ever reaches here
+        raise LogicalException("Malformed proposition in search.")
+
+    def simplify(self, verbose: Union[bool, str] = False) -> Evaluable:
+        start_time = time.time()
+        flushed_prop, flush_passes = self.flush_negation(self.proposition, verbose=verbose)
+
+        self.diagnostics = Diagnostics(
+            starting_proposition=self.proposition,
+            simplification=flushed_prop,
+            negate_flush_passes=flush_passes,
+            time_taken=time.time() - start_time
+        )
+
+        return flushed_prop
+
+
+if __name__ == '__main__':
+    prop = PL("((A implies B) implies (B implies (C or D)))")
+
+    # v = True, False, or 'progress bar'
+    v = 'progress bar'
     memory = False
     other = True
+
+    print("-"*50)
+    print("Flush Negation")
+
+    fn = FlushNegation(prop)
+    fn.simplify(verbose=v)
+    diagnostics = fn.diagnostics
+
+    print(diagnostics)
+
+    print("-"*50)
+    print("No Filter BFS")
+
+    fn_result = diagnostics.simplification
 
     bfs = BFS(prop)
     bfs.simplify(verbose=v, filter_logically_equivalent=False)
@@ -316,20 +509,15 @@ if __name__ == '__main__':
 
     print(diagnostics)
 
+    print("-"*50)
+    print("Filtered BFS")
+
+    bfs = BFS(prop)
+    bfs.simplify(verbose=v, filter_logically_equivalent=True)
+    diagnostics = bfs.diagnostics
+
+    print(diagnostics)
+
     if memory:
         mem_usage = memory_usage(bfs.simplify)
-
         print(mem_usage)
-
-    if other:
-        print("--------------")
-        print("--------------")
-
-        bfs.simplify(verbose=v, filter_logically_equivalent=True)
-        diagnostics2 = bfs.diagnostics
-
-        print(diagnostics2)
-    else:
-        searched_filter = None
-        time_taken_filter = 0
-
