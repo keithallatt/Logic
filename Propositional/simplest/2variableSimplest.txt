@@ -1,0 +1,18 @@
+{
+    "0": false,
+    "1": "(A and B)",
+    "2": "(not (B implies A))",
+    "3": "B",
+    "4": "(not (A implies B))",
+    "5": "A",
+    "6": "(not (A iff B))",
+    "7": "(A or B)",
+    "8": "(not (A or B))",
+    "9": "(A iff B)",
+    "10": "(not A)",
+    "11": "(A implies B)",
+    "12": "(not B)",
+    "13": "(B implies A)",
+    "14": "(not (A and B))",
+    "15": true
+}
