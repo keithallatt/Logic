@@ -1,8 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod
 from typing import Union, Callable
-from collections import Counter
-import warnings
 
 # Unicode logical symbols (propositional logic)
 LOGICAL_SYMBOLS = {
@@ -106,6 +104,9 @@ class Tautology(Evaluable):
     def __str__(self):
         return TRUTH_SYMBOLS['tautology']
 
+    def __repr__(self):
+        return self.__str__()
+
     def atoms_contained(self):
         return []
 
@@ -136,6 +137,9 @@ class Falsehood(Evaluable):
 
     def __str__(self):
         return TRUTH_SYMBOLS['falsehood']
+
+    def __repr__(self):
+        return self.__str__()
 
     def atoms_contained(self):
         return []
@@ -174,6 +178,40 @@ class Atom(Evaluable):
         if self.truth_value is None:
             return False
         return self.truth_value
+
+    def replace(self, old: Union[list[tuple[Evaluable, Evaluable]], Evaluable] = None,
+                new: Evaluable = None,
+                lst: list[tuple[Evaluable, Evaluable]] = None):
+        if type(old) is list:
+            if lst is None:
+                lst = old[::]
+            else:
+                lst += old[::]
+            old = None
+        if lst is None and (old is None or new is None):
+            return self.copy()
+        if lst is not None and old is not None and new is not None:
+            if type(old) is Evaluable:
+                lst.append((old, new))
+        if lst is None:
+            lst = [(old, new)]
+
+        for old_l, new_l in lst:
+            if self == old_l:
+                return new_l.copy()
+
+        return self.copy()
+
+    def copy(self):
+        new_atom = Atom(self.name, self.truth_value)
+        new_atom.truth_table_cached = self.truth_table_cached
+        new_atom.truth_hash_cached = self.truth_hash_cached
+        return new_atom
+
+    def search(self, form: Evaluable):
+        if type(form) is Atom:
+            return [(form.copy(), self.copy())]
+        return []
 
     def atoms_contained(self):
         return [self]
@@ -299,12 +337,88 @@ class LogicalConnective(Evaluable):
 
     @abstractmethod
     def __bool__(self):
-        pass
+        if self.func is None:
+            return False
+        truth_values = [bool(c) for c in self.components]
+        return self.func(*truth_values)
 
-    def replace(self, old: Evaluable, new: Evaluable):
+    def replace(self, old: Union[list[Evaluable], Evaluable] = None,
+                new: Evaluable = None,
+                lst: list[tuple[Evaluable, Evaluable]] = None):
+        if type(old) is list:
+            if lst is None:
+                lst = old[::]
+            else:
+                lst += old[::]
+            old = None
+        if lst is None and (old is None or new is None):
+            return self.copy()
+        if lst is not None and old is not None and new is not None:
+            lst.append((old, new))
+        if lst is None:
+            lst = [(old, new)]
 
-        # re calculate truth table
-        pass
+        for old_l, new_l in lst:
+            if self == old_l:
+                return new_l.copy()
+
+        self_copy = self.copy()
+
+        self_copy.components = [
+            component.copy().replace(lst=lst)
+            for component in self.components
+        ]
+
+        return self_copy
+
+    def copy(self):
+        new_components = [
+            component.copy() for component in self.components
+        ]
+        new_log = LogicalConnective(*new_components, exempt_bin_rest=self.exempt)
+        new_log.func = self.func
+        new_log.name = self.name
+        return new_log
+
+    def search(self, form: Evaluable):
+        """
+        Where replace(A, B) will replace all instances of A with B in the current object, we are
+        searching for a form. Therefore we should return None if the form is non applicable, but
+        if it is, we should get a list of tuples:
+
+        [(o_1, n_1), (o_2, n_2), ... ]
+
+        such that if we replaced all o_i's with n_i's in 'form', we'd have 'self'
+        """
+
+        if type(form) is Atom:
+            return [(form.copy(), self.copy())]
+
+        if form.name != self.name:
+            return []
+        if len(form.components) != len(self.components):
+            return []
+
+        forms = []
+
+        for i in range(len(self.components)):
+            form_c = form.components[i]
+            self_c = self.components[i]
+
+            if type(form_c) is Atom:
+                forms.append((form_c, self_c))
+                continue
+
+            for form_i, value_i in self_c.search(form_c):
+                for form_contained, value_contained in forms:
+                    if form_i == form_contained:
+                        if value_i == value_contained:
+                            break
+                        return []
+                else:
+                    forms.append((form_i, value_i))
+
+        return forms
 
     def atoms_contained(self):
         atoms = []
@@ -323,10 +437,17 @@ class LogicalConnective(Evaluable):
         return atoms
 
     def set_atom_truth_values(self, context):
-        for component in self.components:
-            component.set_atom_truth_values(context)
+        try:
+            for component in self.components:
+                component.set_atom_truth_values(context)
+        except AttributeError:
+            print("Error", self)
 
-    def truth_table(self, atomics: list[Atom], regen: bool = False):
+    def truth_table(self, atomics: list[Atom] = None, regen: bool = False):
+        if atomics is None:
+            atomics = self.atoms_contained()
+            regen = True
+
         if self.truth_table_cached is not None:
             atoms = [
                 elem[0].name for elem in self.truth_table_cached[0][0]
@@ -377,6 +498,25 @@ class LogicalConnective(Evaluable):
             self.truth_hash_cached = sum(t_hash)
         return self.truth_hash_cached
 
+    def pl_ify(self):
+        keyword = None
+        for key, symbol in LOGICAL_SYMBOLS.items():
+            if symbol == self.name:
+                keyword = key
+                break
+        else:
+            print("couldn't find.")
+
+        component_strings = [
+            component.name if type(component) is Atom else component.pl_ify()
+            for component in self.components
+        ]
+
+        if keyword == 'not':
+            return f'(not {component_strings[0]})'
+        else:
+            return f'({component_strings[0]} {keyword} {component_strings[1]})'
+
     def __eq__(self, other):
         if not issubclass(type(other), LogicalConnective):
             return False
@@ -393,7 +533,7 @@ class LogicalConnective(Evaluable):
 
         return True
 
-    def __str__(self, parentheses=False):
+    def __str__(self):
         component_str = ", ".join([str(x).split(":")[0] for x in self.components])
 
         if ENFORCE_BINARY_OPERATIONS and not self.exempt:
@@ -450,7 +590,7 @@ LogicalNot = __generate_connective__(LOGICAL_SYMBOLS["not"], lambda x: not x, ex
 
 def parse_logical(str_repr: str,
                   surround_atoms: bool = True,
-                  expect_none: bool = False) -> Evaluable:
+                  expect_none: bool = False) -> Union[Evaluable, LogicalConnective, Atom]:
     if surround_atoms:
         return parse_logical("".join([
             "(" + char + ")" if char.isupper() else char for char in str_repr
