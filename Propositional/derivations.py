@@ -116,14 +116,11 @@ class Derivation:
     def verify(self):
         counter = self.get_counter_example()
         if counter is not None and type(self) != IndirectDerivation:
-            print(type(self))
-
-            print(self.axioms)
-
-            print([str(x) for x in self.assumptions])
-
-            print(self.consequence)
-            print(f"Found counter example {counter}")
+            # print(type(self))
+            # print(self.axioms)
+            # print([str(x) for x in self.assumptions])
+            # print(self.consequence)
+            # print(f"Found counter example {counter}")
             return None, None
 
         justification = []
@@ -149,7 +146,7 @@ class Derivation:
                 for e in derivation_step.environment:
                     if e not in environment:
                         # illegal (needs tweaks)
-                        print("Component not in environment", e)
+                        # print("Component not in environment", e)
                         justification.append("Illegal Operation ?? " + str(e))
                         return justification, "Incomplete"
 
@@ -181,8 +178,8 @@ class Derivation:
 
                 for line in sub_derivation:
                     m = re.search(
-                        r'(((\w{1,4}) (((pr|asm)?\d+), )*((pr|asm)?\d+)))|((dd|cd|id).+)',
-                    line)
+                        r'((\w{1,4}) (((pr|asm)?\d+), )*((pr|asm)?\d+))|((dd|cd|id).+)',
+                        line)
 
                     add_extra = False
 
@@ -246,7 +243,7 @@ class Derivation:
                                 str(i) + " " * (len(str(len(self.derivation))) - len(str(i)) + 1),
                                 str(derivation_step.l1),
                                 LOGICAL_SYMBOLS["and"],
-                                str(derivation_step.l2) ]),
+                                str(derivation_step.l2)]),
                                 "id " + ", ".join(locations)
                             ])
                             break
@@ -312,7 +309,7 @@ class DirectDerivation(Derivation):
 
         axiom_and_consequence = " ".join(["; ".join([str(axiom)
                                                      for axiom in sorted(list(set(self.axioms)),
-                                                                         key=lambda x: x.name)]),
+                                                                         key=lambda _: _.name)]),
                                           TRUTH_SYMBOLS['proves'],
                                           str(self.consequence)])
 
@@ -362,7 +359,8 @@ class ConditionalDerivation(Derivation):
     def __str__(self):
         string_repr = super().__str__()
         
-        return " ".join([string_repr.split(TRUTH_SYMBOLS['proves'])[0].strip(), TRUTH_SYMBOLS['proves'], str(self.old_consequence)])
+        return " ".join([string_repr.split(TRUTH_SYMBOLS['proves'])[0].strip(),
+                         TRUTH_SYMBOLS['proves'], str(self.old_consequence)])
             
     def __repr__(self):
         return self.__str__()
@@ -375,7 +373,7 @@ class ConditionalDerivation(Derivation):
 
         axiom_and_consequence = " ".join(["; ".join([str(axiom)
                                                      for axiom in sorted(list(set(self.axioms)),
-                                                                         key=lambda x: x.name)
+                                                                         key=lambda _: _.name)
                                                      if axiom not in set(self.assumptions)]),
                                           TRUTH_SYMBOLS['proves'],
                                           str(self.old_consequence)])
@@ -432,7 +430,7 @@ class IndirectDerivation(Derivation):
 
         axiom_and_consequence = " ".join(["; ".join([str(axiom)
                                                      for axiom in sorted(list(set(self.axioms)),
-                                                                         key=lambda x: x.name)
+                                                                         key=lambda _: _.name)
                                                      if axiom not in set(self.assumptions)]),
                                           TRUTH_SYMBOLS['proves'],
                                           str(self.consequence)])
