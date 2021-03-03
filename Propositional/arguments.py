@@ -59,7 +59,7 @@ class Contradiction(Argument):
 
     def get_application(self) -> Union[Evaluable, None]:
         p, not_p = self.ls[:2]
-        if p == LogicalNot(not_p) or LogicalNot(p) == not_p:
+        if p == ~not_p or ~p == not_p:
             raise LogicalException("Contradiction")
         return None
 
@@ -117,15 +117,15 @@ class ModusTollens(Argument):
             premise = self.l1.components[0]
             consequence = self.l1.components[1]
 
-            if LogicalNot(consequence) == self.l2 or consequence == LogicalNot(self.l2):
-                return LogicalNot(premise)
+            if ~consequence == self.l2 or consequence == ~self.l2:
+                return ~premise
         if type(self.l2) is LogicalImplies:
             self.l2: LogicalConnective
             premise = self.l2.components[0]
             consequence = self.l2.components[1]
 
-            if LogicalNot(consequence) == self.l1 or consequence == LogicalNot(self.l1):
-                return LogicalNot(premise)
+            if ~consequence == self.l1 or consequence == ~self.l1:
+                return ~premise
 
         return None
 
@@ -147,7 +147,7 @@ class HypotheticalSyllogism(Argument):
             if q1 != q2:
                 return None
 
-            return LogicalImplies(p, r)
+            return p >> r
         return None
 
 
@@ -162,19 +162,31 @@ class ModusTollendoPonens(Argument):
         if type(self.l1) is LogicalOr:
             p, q = self.l1.components[:2]
 
-            if self.l2 == LogicalNot(p) or p == LogicalNot(self.l2):
+            if self.l2 == ~p or p == ~self.l2:
                 return q
-            if self.l2 == LogicalNot(q) or q == LogicalNot(self.l2):
+            if self.l2 == ~q or q == ~self.l2:
                 return p
 
         if type(self.l2) is LogicalOr:
             p, q = self.l2.components[:2]
 
-            if self.l1 == LogicalNot(p) or p == LogicalNot(self.l1):
+            if self.l1 == ~p or p == ~self.l1:
                 return q
-            if self.l1 == LogicalNot(q) or q == LogicalNot(self.l1):
+            if self.l1 == ~q or q == ~self.l1:
                 return p
         return None
+
+
+class Conjunction(Argument):
+    """ p, q; therefore p and q """
+    num_inputs = 2
+
+    def __init__(self, l1: Evaluable, l2: Evaluable):
+        super().__init__("Simplification", l1, l2)
+        self.get_application()
+
+    def get_application(self) -> Union[Evaluable, None]:
+        return self.l1 & self.l2
 
 
 class Simplification(Argument):
@@ -247,10 +259,8 @@ class DoubleNegation(Argument):
         super().__init__("Double Negation", l1, l2)
 
     def get_application(self) -> Union[Evaluable, None]:
-        if self.l1 == LogicalNot(LogicalNot(self.l2)) or \
-                LogicalNot(LogicalNot(self.l1)) == self.l2:
+        if self.l1 == ~~self.l2 or ~~self.l1 == self.l2:
             return self.l2
-
         return None
 
     def required_propositions(self):
@@ -297,16 +307,12 @@ class BidirectionalConditional(Argument):
             p2, q2 = self.l2.components[:2]
             if p1 == q2 and q1 == p2:
                 self.rp = [self.l1, self.l2]
-                return LogicalIff(p1, q1)
-
+                return p1 ^ q1
         return None
 
     def required_propositions(self):
         return self.rp
 
-
-# Other arguments
-# de morgans laws
 
 # GLOBAL VARIABLE BLOB
 DERIVATIONS = [
@@ -314,13 +320,3 @@ DERIVATIONS = [
     inspect.getmembers(sys.modules[__name__], inspect.isclass)
     if issubclass(class_type, Argument) and class_type != Argument
 ]
-
-if __name__ == '__main__':
-    PL = parse_logical
-
-    prop1 = PL("A implies B")
-    prop2 = PL("B implies A")
-
-    bc = BidirectionalConditional(prop2, prop1)
-
-    print(bc.apply())

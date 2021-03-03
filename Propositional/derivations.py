@@ -12,23 +12,28 @@ class Derivation:
                  axioms: list[Evaluable],
                  assumptions: list[Evaluable],
                  consequence: Evaluable,
-                 derivation: list[Union[Argument, Subderivation]]):
+                 derivation: list[Union[Argument, SubDerivation]]):
         self.derivation_kind = derivation_kind
         self.axioms = axioms
         self.assumptions = assumptions
         self.consequence = consequence
         self.derivation = derivation
+        for step in derivation:
+            if type(step) is SubDerivation:
+                step: SubDerivation
+                step.__init__(step.derivation, step.environment, step.consequence, parent=self)
 
     def is_valid(self):
         return self.get_counter_example() is None
 
+    def argument_complete(self):
+        return "Q.E.D." in self.verify()
+
     def __str__(self):
         axioms = "; ".join([
             str(axiom) for axiom in self.axioms
-        ] + [
-            "["+str(assumption)+"]" for assumption in self.assumptions
         ])
-        
+
         return " ".join([axioms, TRUTH_SYMBOLS['proves'], str(self.consequence)])
             
     def __repr__(self):
@@ -116,11 +121,6 @@ class Derivation:
     def verify(self):
         counter = self.get_counter_example()
         if counter is not None and type(self) != IndirectDerivation:
-            # print(type(self))
-            # print(self.axioms)
-            # print([str(x) for x in self.assumptions])
-            # print(self.consequence)
-            # print(f"Found counter example {counter}")
             return None, None
 
         justification = []
@@ -134,20 +134,17 @@ class Derivation:
         i = 1
 
         if not self.derivation:
-            self.derivation = [
-                Repeat(self.consequence)
-            ]
+            self.derivation = [Repeat(self.consequence)]
 
         for derivation_step in self.derivation:
             locations = []
 
-            if type(derivation_step) is Subderivation:
-                # needs to find applicable form. for now, only literal.
+            if type(derivation_step) is SubDerivation:
                 for e in derivation_step.environment:
                     if e not in environment:
                         # illegal (needs tweaks)
                         # print("Component not in environment", e)
-                        justification.append("Illegal Operation ?? " + str(e))
+                        justification.append(["Illegal Operation ?? " + str(e), "xx"])
                         return justification, "Incomplete"
 
                 # put application in environment
@@ -167,7 +164,8 @@ class Derivation:
                 valid_derivation = derivation_verification.endswith("Q.E.D.")
                 if not valid_derivation:
                     print("Invalid subderivation", derivation_verification)
-                    justification.append("Invalid subderivation\n" + derivation_verification)
+                    justification.append(["Invalid subderivation\n" + derivation_verification,
+                                          'xx'])
                     return justification, "Incomplete"
 
                 derivation_verification = "\n".join(derivation_verification.split("\n")[1:-1])
@@ -210,7 +208,6 @@ class Derivation:
 
                 environment.append(application)
                 derives.update({application: i})
-
             else:
                 derivation_step: Argument
 
@@ -230,7 +227,7 @@ class Derivation:
                 for component in derivation_components:
                     if component not in environment:
                         print("Component not in environment", component)
-                        justification.append("Illegal Operation ?? " + str(component))
+                        justification.append(["Illegal Operation ?? " + str(component), 'xx'])
                         return justification, "Incomplete"
                 else:
                     try:
@@ -241,9 +238,7 @@ class Derivation:
 
                             justification.append([" ".join([
                                 str(i) + " " * (len(str(len(self.derivation))) - len(str(i)) + 1),
-                                str(derivation_step.l1),
-                                LOGICAL_SYMBOLS["and"],
-                                str(derivation_step.l2)]),
+                                TRUTH_SYMBOLS['f']]),
                                 "id " + ", ".join(locations)
                             ])
                             break
@@ -296,7 +291,7 @@ class DirectDerivation(Derivation):
     def __init__(self,
                  axioms: list[Evaluable],
                  consequence: Evaluable,
-                 derivation: list[Union[Argument, Subderivation]]):
+                 derivation: list[Union[Argument, SubDerivation]]):
         super().__init__("Direct Derivation", axioms, [], consequence, derivation)
 
     def verify(self):
@@ -313,16 +308,21 @@ class DirectDerivation(Derivation):
                                           TRUTH_SYMBOLS['proves'],
                                           str(self.consequence)])
 
-        max_line_len = max([
-                               max([len(subline) for subline in str(line[0]).split("\n")])
-                               for line in justification
-                           ] + [20])
+        try:
+            max_line_len = max([
+                                   max([len(subline) for subline in str(line[0]).split("\n")])
+                                   for line in justification
+                               ] + [20])
+        except TypeError:
+            max_line_len = 20
 
-        justification = [
-            " | " + line[0] + " " * (max_line_len - len(line[0]) + 2) + line[1]
-            if not line[0].startswith("Illegal") else line
-            for line in justification
-        ]
+        try:
+            justification = [
+                " | " + line[0] + " " * (max_line_len - len(line[0]) + 2) + line[1]
+                for line in justification
+            ]
+        except TypeError:
+            justification = []
 
         return "\n".join([
             axiom_and_consequence, f"Show {consequence}:", *justification, verification
@@ -342,7 +342,7 @@ class ConditionalDerivation(Derivation):
     def __init__(self,
                  axioms: list[Evaluable],
                  consequence: Evaluable,
-                 derivation: list[Argument]):
+                 derivation: list[Argument, SubDerivation]):
 
         # need to add X as axiom
         assumptions = []
@@ -352,6 +352,7 @@ class ConditionalDerivation(Derivation):
         consequences: LogicalConnective
         assumptions.append(consequence.components[0])
         new_consequence = consequence.components[1]
+        self.assumptions_str = str(assumptions[0])
 
         super().__init__("Conditional Derivation", axioms,
                          assumptions, new_consequence, derivation)
@@ -380,8 +381,6 @@ class ConditionalDerivation(Derivation):
 
         consequence = str(self.old_consequence)
 
-        assumptions_str = ", ".join([str(assumption) for assumption in self.assumptions])
-
         max_line_len = max([
                                max([len(subline) for subline in str(line[0]).split("\n")])
                                for line in justification
@@ -389,12 +388,11 @@ class ConditionalDerivation(Derivation):
 
         justification = [
             " | " + line[0] + " " * (max_line_len - len(line[0]) + 2) + line[1]
-            if not line[0].startswith("Illegal") else line
             for line in justification
         ]
 
         return "\n".join([
-            axiom_and_consequence, f"Show {consequence}:", f"Assume {assumptions_str}",
+            axiom_and_consequence, f"Show {consequence}:", f"Assume {self.assumptions_str}",
             *justification, verification
         ])
 
@@ -412,10 +410,11 @@ class IndirectDerivation(Derivation):
     def __init__(self,
                  axioms: list[Evaluable],
                  consequence: Evaluable,
-                 derivation: list[Union[Argument, Subderivation]]):
+                 derivation: list[Union[Argument, SubDerivation]]):
 
         # need to add X as axiom
         assumptions = [LogicalNot(consequence)]
+        self.assumptions_str = str(assumptions[0])
 
         super().__init__("Indirect Derivation", axioms,
                          assumptions, consequence, derivation)
@@ -437,8 +436,6 @@ class IndirectDerivation(Derivation):
 
         consequence = str(self.consequence)
 
-        assumptions_str = ", ".join([str(assumption) for assumption in self.assumptions])
-
         max_line_len = max([
                                max([len(subline) for subline in str(line[0]).split("\n")])
                                for line in justification
@@ -446,75 +443,40 @@ class IndirectDerivation(Derivation):
 
         justification = [
             " | " + line[0] + " " * (max_line_len - len(line[0]) + 2) + line[1]
-            if not line[0].startswith("Illegal") else line
             for line in justification
         ]
 
         return "\n".join([
-            axiom_and_consequence, f"Show {consequence}:", f"Assume {assumptions_str}",
+            axiom_and_consequence, f"Show {consequence}:", f"Assume {self.assumptions_str}",
             *justification, verification
         ])
 
 
-class Subderivation:
-    """
-
-    """
+class SubDerivation:
     def __init__(self,
-                 parent: Union[Derivation, Subderivation],
-                 environment: list[Evaluable],
-                 consequence: Evaluable,
-                 derivation: Derivation):
-        self.parent = parent
-        if issubclass(type(parent), Derivation):
-            self.environment = environment + parent.assumptions[::] + parent.axioms[::]
+                 derivation: Derivation,
+                 environment: list[Evaluable] = None,
+                 consequence: Evaluable = None,
+                 parent: Union[Derivation, SubDerivation] = None
+                 ):
+        if environment is None:
+            environment = []
+        if parent is not None:
+            self.parent = parent
+            if issubclass(type(parent), Derivation):
+                self.environment = environment + parent.assumptions[::] + parent.axioms[::]
+            else:
+                self.environment = environment + parent.environment[::]
         else:
-            self.environment = environment + parent.environment[::]
-        self.consequence = consequence
+            self.parent = None
+            self.environment = None if environment == [] else environment
         self.derivation = derivation
 
+        self.consequence = consequence
+        if self.consequence is None and derivation is not None:
+            if type(self.derivation) is ConditionalDerivation:
+                self.derivation: ConditionalDerivation
+                self.consequence = self.derivation.old_consequence
+            else:
+                self.consequence = self.derivation.consequence
 
-if __name__ == '__main__':
-    PL = parse_logical
-
-    axiomsDM = [
-        PL("A or B")
-    ]
-
-    consequencesDM = PL("not ((not A) and (not B))")
-
-    derivationDM = [
-        DoubleNegation(PL("not (not ((not A) and (not B)))"), PL("(not A) and (not B)")),
-        Simplification(PL("(not A) and (not B)"), PL("not A")),
-        Simplification(PL("(not A) and (not B)"), PL("not B")),
-        ModusTollendoPonens(PL("A or B"), PL("not A")),
-        Contradiction(PL("B"), PL("not B"))
-    ]
-
-    pDM = IndirectDerivation(
-        axiomsDM,
-        consequencesDM,
-        derivationDM
-    )
-
-    print(pDM.verify())
-    print("---------")
-
-    axioms1 = [
-        PL("A"), PL("not A")
-    ]
-
-    consequences1 = PL("B")
-
-    derivation1 = [
-        Contradiction(PL("A"), PL("not A"))
-    ]
-
-    p1 = DirectDerivation(
-        axioms1,
-        consequences1,
-        derivation1
-    )
-
-    print(p1.verify())
-    print("---------")

@@ -335,7 +335,6 @@ class LogicalConnective(Evaluable):
         self.exempt = exempt_bin_rest
         self.func = None
 
-    @abstractmethod
     def __bool__(self):
         if self.func is None:
             return False

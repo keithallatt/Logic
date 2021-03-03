@@ -68,7 +68,7 @@ class BFSDirectDerivation:
         for i in range(len(path)-1, -1, -1):
             new_path = path[:i] + path[i+1:]
             d.derivation = new_path
-            if "Q.E.D." in d.verify():
+            if d.argument_complete():
                 path = new_path
 
         return path
