@@ -12,7 +12,7 @@ class Derivation:
                  axioms: list[Evaluable],
                  assumptions: list[Evaluable],
                  consequence: Evaluable,
-                 derivation: list[Union[Argument, SubDerivation]]):
+                 derivation: list[Union[Argument, Derivation, SubDerivation]]):
         self.derivation_kind = derivation_kind
         self.axioms = axioms
         self.assumptions = assumptions
@@ -27,6 +27,7 @@ class Derivation:
                 derivation[i] = SubDerivation(step, parent=self)
 
         self.derivation = derivation
+        self._final_i = None
 
     def is_valid(self):
         return self.get_counter_example() is None
@@ -123,7 +124,11 @@ class Derivation:
 
         return None
 
-    def verify(self):
+    @property
+    def line_end_number(self):
+        return self._final_i
+
+    def verify(self, verify_number_at=1):
         counter = self.get_counter_example()
         if counter is not None and type(self) != IndirectDerivation:
             return None, None
@@ -136,7 +141,7 @@ class Derivation:
 
         environment = self.axioms[::] + self.assumptions[::]
         derives = {}
-        i = 1
+        i = verify_number_at
 
         if not self.derivation:
             self.derivation = [Repeat(self.consequence)]
@@ -150,6 +155,7 @@ class Derivation:
                         # illegal (needs tweaks)
                         # print("Component not in environment", e)
                         justification.append(["Illegal Operation ?? " + str(e), "xx"])
+                        self._final_i = i
                         return justification, "Incomplete"
 
                 # put application in environment
@@ -164,13 +170,14 @@ class Derivation:
 
                 derivation_step.derivation.assumptions = new_assumptions
 
-                derivation_verification = derivation_step.derivation.verify()
+                derivation_verification = derivation_step.derivation.verify(verify_number_at=i+1)
 
                 valid_derivation = derivation_verification.endswith("Q.E.D.")
                 if not valid_derivation:
                     print("Invalid subderivation", derivation_verification)
                     justification.append(["Invalid subderivation\n" + derivation_verification,
                                           'xx'])
+                    self._final_i = i
                     return justification, "Incomplete"
 
                 derivation_verification = "\n".join(derivation_verification.split("\n")[1:-1])
@@ -214,6 +221,8 @@ class Derivation:
 
                 environment.append(application)
                 derives.update({application: i})
+
+                i = derivation_step.derivation.line_end_number
             else:
                 derivation_step: Argument
 
@@ -234,6 +243,7 @@ class Derivation:
                     if component not in environment:
                         print("Component not in environment", component)
                         justification.append(["Illegal Operation ?? " + str(component), 'xx'])
+                        self._final_i = i
                         return justification, "Incomplete"
                 else:
                     try:
@@ -249,6 +259,7 @@ class Derivation:
                             ])
                             break
                         else:
+                            self._final_i = i
                             raise log_exc
 
                 short_name = "".join([char.lower()
@@ -262,6 +273,9 @@ class Derivation:
                     short_name + " " + ", ".join(locations)
                 ])
 
+                environment.append(application)
+                derives.update({application: i})
+
             prove_line = ""
 
             if application == self.consequence:
@@ -271,9 +285,6 @@ class Derivation:
                 # add line
                 justification.append([str(i+1), prove_line + " " + str(i)])
 
-            environment.append(application)
-            derives.update({application: i})
-
             i += 1
 
         verification = ""
@@ -281,6 +292,8 @@ class Derivation:
             verification += "Q.E.D."
         else:
             verification += "X < Incomplete / Incorrect > X"
+
+        self._final_i = i
 
         return justification, verification
 
@@ -297,12 +310,12 @@ class DirectDerivation(Derivation):
     def __init__(self,
                  axioms: list[Evaluable],
                  consequence: Evaluable,
-                 derivation: list[Union[Argument, SubDerivation]]):
+                 derivation: list[Union[Argument, Derivation, SubDerivation]]):
         super().__init__("Direct Derivation", axioms, [], consequence, derivation)
 
-    def verify(self):
+    def verify(self, verify_number_at=1):
         try:
-            justification, verification = super().verify()
+            justification, verification = super().verify(verify_number_at)
         except TypeError:
             return None
 
@@ -372,9 +385,9 @@ class ConditionalDerivation(Derivation):
     def __repr__(self):
         return self.__str__()
 
-    def verify(self):
+    def verify(self, verify_number_at=1):
         try:
-            justification, verification = super().verify()
+            justification, verification = super().verify(verify_number_at)
         except TypeError:
             return None
 
@@ -416,7 +429,7 @@ class IndirectDerivation(Derivation):
     def __init__(self,
                  axioms: list[Evaluable],
                  consequence: Evaluable,
-                 derivation: list[Union[Argument, SubDerivation]]):
+                 derivation: list[Union[Argument, Derivation, SubDerivation]]):
 
         # need to add X as axiom
         assumptions = [LogicalNot(consequence)]
@@ -425,9 +438,9 @@ class IndirectDerivation(Derivation):
         super().__init__("Indirect Derivation", axioms,
                          assumptions, consequence, derivation)
 
-    def verify(self):
+    def verify(self, verify_number_at=1):
         try:
-            justification, verification = super().verify()
+            justification, verification = super().verify(verify_number_at)
         except TypeError as e:
             print("Type Error", e)
             traceback.print_exception(*sys.exc_info())
@@ -487,3 +500,22 @@ class SubDerivation:
                 self.consequence = self.derivation.consequence
 
 
+if __name__ == '__main__':
+    A, B, C = [Atom(chr(ord("A")+i)) for i in range(3)]
+
+    print(DirectDerivation(
+        axioms=[A, B],
+        consequence=A ^ B,
+        derivation=[
+            ConditionalDerivation(
+                axioms=[A, B],
+                consequence=A >> B,
+                derivation=[Repeat(B)]
+            ),
+            ConditionalDerivation(
+                axioms=[A, B],
+                consequence=B >> A,
+                derivation=[Repeat(A)]
+            ),
+            BidirectionalConditional(A >> B, B >> A)
+        ]).verify())
