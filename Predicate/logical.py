@@ -1,6 +1,6 @@
 from __future__ import annotations
 # going to need this, for logical connectives.
-from Propositional.logical import *
+# from Propositional.logical import *
 
 
 class Predicate:

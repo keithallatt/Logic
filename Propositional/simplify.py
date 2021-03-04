@@ -121,7 +121,6 @@ class BFS(Simplification):
         self.diagnostics = None
 
     def simplify(self, verbose: Union[bool, str] = True,
-                 filter_logically_equivalent: bool = False,
                  stop_at: bool = None) -> Evaluable:
 
         progress_bar = (verbose == 'progress bar')
@@ -299,66 +298,22 @@ class BFS(Simplification):
                         lc1 = logical_connective(other_term, next_connective)
                         lc2 = logical_connective(next_connective, other_term)
 
-                        if filter_logically_equivalent:
-                            if not lc1.truth_hash(_atomics) in truth_values_hash:
-                                new_considerations.append((len(str(lc1)), next(unique), lc1))
-                        else:
-                            new_considerations.append((len(str(lc1)), next(unique), lc1))
+                        new_considerations.append((len(str(lc1)), next(unique), lc1))
 
                         # only non-commutative operation.
                         if logical_connective == LogicalImplies:
-                            if filter_logically_equivalent:
-                                if not lc2.truth_hash(_atomics) in truth_values_hash:
-                                    new_considerations.append((len(str(lc2)), next(unique), lc2))
-                            else:
-                                new_considerations.append((len(str(lc2)), next(unique), lc2))
+                            new_considerations.append((len(str(lc2)), next(unique), lc2))
 
                 t_consider = time.time()
 
                 num_considerations = 0
 
                 for consideration in new_considerations:
-                    if filter_logically_equivalent:
-                        # filter out all tautologies and falsehoods. Essentially starting from null
-                        if consideration[-1].equiv(Tautology()) or \
-                                consideration[-1].equiv(Falsehood()):
-                            pruned += 1
-                            continue
-
-                        # filter if need be
-                        if set(dependant_vars) != set(consideration[-1].atoms_contained()):
-                            if len(str(consideration[-1])) <= len(str(self.proposition)):
-                                to_consider.put(consideration)
-                                num_considerations += 1
-                            else:
-                                pruned += 1
-                            continue
-
-                        t_hash = consideration[-1].truth_hash(_atomics)
-
-                        if t_hash in truth_values_hash:
-                            if verbose:
-                                print("Hash found:", t_hash, consideration[-1])
-                            contained = True
-                        else:
-                            truth_values_hash.add(t_hash)
-                            contained = False
-
-                        if not contained:
-                            if len(str(consideration[-1])) < len(str(self.proposition)):
-                                num_considerations += 1
-                                to_consider.put(consideration)
-                            else:
-                                pruned += 1
-                        else:
-                            pruned += 1
+                    if len(str(consideration[-1])) < len(str(self.proposition)):
+                        num_considerations += 1
+                        to_consider.put(consideration)
                     else:
-                        # no filtering.
-                        if len(str(consideration[-1])) < len(str(self.proposition)):
-                            num_considerations += 1
-                            to_consider.put(consideration)
-                        else:
-                            pruned += 1
+                        pruned += 1
 
                 t_filtered = time.time()
 
@@ -524,7 +479,7 @@ def gen_connective_from_truth_table(truth_table, atomics_bank=None):
     lc1 = make_conn(combos_make_true, LogicalOr)
 
     bfs = BFS(lc1, atomics_bank=atomics_bank)
-    bfs.simplify(verbose='progress bar', filter_logically_equivalent=False)
+    bfs.simplify(verbose='progress bar')
 
     lc1_simp = bfs.diagnostics.simplification
 

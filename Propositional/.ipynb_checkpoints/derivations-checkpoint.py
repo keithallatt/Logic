@@ -24,16 +24,16 @@ class Derivation:
 
     def __str__(self):
         axioms = "; ".join([
-            str(axiom) for axiom in self.axioms
-        ] + [
-            "["+str(assumption)+"]" for assumption in self.assumptions
-        ])
-        
+                               str(axiom) for axiom in self.axioms
+                           ] + [
+                               "[" + str(assumption) + "]" for assumption in self.assumptions
+                           ])
+
         return " ".join([axioms, LOGICAL_SYMBOLS['proves'], str(self.consequence)])
-            
+
     def __repr__(self):
         return self.__str__()
-    
+
     def get_counter_example(self):
         """ In logic, more precisely in deductive reasoning, an argument is valid if and only if
             it is takes a form that makes it impossible for the premises to be true and the
@@ -180,8 +180,8 @@ class Derivation:
 
                 for line in sub_derivation:
                     m = re.search(
-                        r'(((\w{1,4}) (((pr|asm)?\d+), )*((pr|asm)?\d+)))|((dd|cd|id).+)',
-                    line)
+                        r'((\w{1,4}) (((pr|asm)?\d+), )*((pr|asm)?\d+))|((dd|cd|id).+)',
+                        line)
 
                     add_extra = False
 
@@ -220,7 +220,7 @@ class Derivation:
 
                 for dc in derivation_components:
                     if dc in self.axioms:
-                        locations.append(f"pr{self.axioms.index(dc)+1}")
+                        locations.append(f"pr{self.axioms.index(dc) + 1}")
                     elif dc in self.assumptions:
                         locations.append(f"asm{self.assumptions.index(dc) + 1}")
                     else:
@@ -245,7 +245,7 @@ class Derivation:
                                 str(i) + " " * (len(str(len(self.derivation))) - len(str(i)) + 1),
                                 str(derivation_step.l1),
                                 LOGICAL_SYMBOLS["and"],
-                                str(derivation_step.l2) ]),
+                                str(derivation_step.l2)]),
                                 "id " + ", ".join(locations)
                             ])
                             break
@@ -259,7 +259,7 @@ class Derivation:
                 justification.append([" ".join([
                     str(i) + " " * (len(str(len(self.derivation))) - len(str(i)) + 1),
                     str(application),
-                    ]),
+                ]),
                     short_name + " " + ", ".join(locations)
                 ])
 
@@ -270,7 +270,7 @@ class Derivation:
 
             if prove_line != "":
                 # add line
-                justification.append([str(i+1), prove_line + " " + str(i)])
+                justification.append([str(i + 1), prove_line + " " + str(i)])
 
             environment.append(application)
             derives.update({application: i})
@@ -295,6 +295,7 @@ class DirectDerivation(Derivation):
         .
         Prove X / show contradiction in axioms.
      """
+
     def __init__(self,
                  axioms: list[Evaluable],
                  consequence: Evaluable,
@@ -312,7 +313,7 @@ class DirectDerivation(Derivation):
         axiom_and_consequence = " ".join(["; ".join([str(axiom)
                                                      for axiom in sorted(list(set(self.axioms)),
                                                                          key=lambda x: x.name)]),
-                                          LOGICAL_SYMBOLS['proves'],
+                                          TRUTH_SYMBOLS['proves'],
                                           str(self.consequence)])
 
         max_line_len = max([
@@ -341,6 +342,7 @@ class ConditionalDerivation(Derivation):
         .
         Prove Y / show contradiction.
      """
+
     def __init__(self,
                  axioms: list[Evaluable],
                  consequence: Evaluable,
@@ -360,9 +362,11 @@ class ConditionalDerivation(Derivation):
 
     def __str__(self):
         string_repr = super().__str__()
-        
-        return " ".join([string_repr.split(LOGICAL_SYMBOLS['proves'])[0].strip(), LOGICAL_SYMBOLS['proves'], str(self.old_consequence)])
-            
+
+        return " ".join(
+            [string_repr.split(LOGICAL_SYMBOLS['proves'])[0].strip(), LOGICAL_SYMBOLS['proves'],
+             str(self.old_consequence)])
+
     def __repr__(self):
         return self.__str__()
 
@@ -410,6 +414,7 @@ class IndirectDerivation(Derivation):
         .
         Leads to contradiction.
      """
+
     def __init__(self,
                  axioms: list[Evaluable],
                  consequence: Evaluable,
@@ -433,7 +438,7 @@ class IndirectDerivation(Derivation):
                                                      for axiom in sorted(list(set(self.axioms)),
                                                                          key=lambda x: x.name)
                                                      if axiom not in set(self.assumptions)]),
-                                          LOGICAL_SYMBOLS['proves'],
+                                          TRUTH_SYMBOLS['proves'],
                                           str(self.consequence)])
 
         consequence = str(self.consequence)
@@ -461,6 +466,7 @@ class Subderivation:
     """
 
     """
+
     def __init__(self,
                  parent: Union[Derivation, Subderivation],
                  environment: list[Evaluable],

@@ -27,7 +27,7 @@ if __name__ == '__main__':
         axioms, consequence_sub_ind, derivation_sub_ind
     )
 
-    sub_ind = Subderivation(dd, axioms, PL("((not A) or B)"), cd_sub_ind)
+    sub_ind = SubDerivation(cd_sub_ind, axioms, PL("((not A) or B)"), dd)
 
     ###
 
@@ -42,7 +42,7 @@ if __name__ == '__main__':
         axioms, consequence_sub1, derivation_sub1
     )
 
-    sub1 = Subderivation(sub_ind, axioms, consequence_sub1, cd_sub1)
+    sub1 = SubDerivation(cd_sub1, axioms, consequence_sub1, sub_ind)
 
     ###
 
@@ -56,7 +56,7 @@ if __name__ == '__main__':
         axioms, consequence_sub2, derivation_sub2
     )
 
-    sub2 = Subderivation(sub_ind, axioms, consequence_sub2, cd_sub2)
+    sub2 = SubDerivation(cd_sub2, axioms, consequence_sub2, sub_ind)
 
     derivation_sub_ind = [
         sub1,

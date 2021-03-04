@@ -1,7 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod
 from typing import Union, Callable
-import warnings
 
 # Unicode logical symbols (propositional logic)
 LOGICAL_SYMBOLS = {
@@ -223,7 +222,7 @@ def __generate_connective__(name: str, func: Callable, **kwargs):
             truth_values = [bool(c) for c in self.components]
             return func(*truth_values)
 
-        def __str__(self):
+        def __str__(self, **kwargs):
             return super().__str__()
 
         def __repr__(self):

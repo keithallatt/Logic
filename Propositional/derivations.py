@@ -17,11 +17,16 @@ class Derivation:
         self.axioms = axioms
         self.assumptions = assumptions
         self.consequence = consequence
-        self.derivation = derivation
-        for step in derivation:
+
+        for step, i in zip(derivation, range(len(derivation))):
             if type(step) is SubDerivation:
                 step: SubDerivation
                 step.__init__(step.derivation, step.environment, step.consequence, parent=self)
+            elif issubclass(type(step), Derivation):
+                step: Derivation
+                derivation[i] = SubDerivation(step, parent=self)
+
+        self.derivation = derivation
 
     def is_valid(self):
         return self.get_counter_example() is None
@@ -176,23 +181,24 @@ class Derivation:
 
                 for line in sub_derivation:
                     m = re.search(
-                        r'((\w{1,4}) (((pr|asm)?\d+), )*((pr|asm)?\d+))|((dd|cd|id).+)',
+                        r'((\w{1,4}) (((pr|asm)?\d+), )*((pr|asm)?\d+))|((dd|cd|id|tnd).+?)',
                         line)
 
                     add_extra = False
-
                     if m is not None:
-                        last_bit = m.groups()[0].strip()
+                        if m.groups()[0] is None:
+                            last_bit = m.groups()[7].strip()
+                        else:
+                            last_bit = m.groups()[0].strip()
 
                         if line.strip().endswith(last_bit):
-                            line, loc = line[:-len(last_bit)].rstrip(), last_bit
+                            line, loc = line.rstrip()[:-len(last_bit)], last_bit
 
                             justification.append([" ".join([
                                 flag_i + " " * (len(str(len(self.derivation))) - len(flag_i) + 1),
                                 line]),
                                 loc
                             ])
-
                         else:
                             add_extra = True
                     else:
@@ -479,4 +485,5 @@ class SubDerivation:
                 self.consequence = self.derivation.old_consequence
             else:
                 self.consequence = self.derivation.consequence
+
 
