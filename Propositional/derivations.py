@@ -5,11 +5,13 @@ import re
 
 
 class Derivation:
-    def __init__(self, derivation_kind: str, axioms: list[Evaluable], assumptions: list[Evaluable],
-                 consequence: Evaluable, derivation: list[Union[Argument, Derivation, SubDerivation]]):
+    def __init__(self, derivation_kind: str, axioms: list[Evaluable],
+                 assumptions: list[Evaluable], consequence: Evaluable,
+                 derivation: list[Union[Argument, Derivation, SubDerivation]]):
+        self.derives = {}
         self.derivation_kind = derivation_kind
         self.axioms = axioms
-        self.axioms.sort(key=lambda x: str(x))
+        self.axioms.sort(key=lambda _: str(_))
         self.assumptions = assumptions
         self.consequence = consequence
 
@@ -124,7 +126,7 @@ class Derivation:
     def line_end_number(self):
         return self._final_i
 
-    def verify(self, verify_number_at=1, join_after=True):
+    def verify(self, verify_number_at=1, consequence_str=None, join_after=True):
         self.verify_number_at = verify_number_at
 
         counter = self.get_counter_example()
@@ -140,9 +142,11 @@ class Derivation:
         environment = self.axioms[::] + self.assumptions[::]
         self.derives = {}
         i = verify_number_at
+        verification = ""
 
         if not self.derivation:
             self.derivation = [Repeat(self.consequence)]
+
 
         for derivation_step in self.derivation:
             locations = []
@@ -154,7 +158,11 @@ class Derivation:
                         # print("Component not in environment", e)
                         justification.append(["Illegal Operation ?? " + str(e), "xx"])
                         self._final_i = i
-                        return justification, "Incomplete"
+                        verification = "Incomplete"
+                        break
+
+                if verification == "Incomplete":
+                    break
 
                 # put application in environment
                 application = derivation_step.consequence
@@ -178,8 +186,8 @@ class Derivation:
                     justification.append(["Invalid subderivation\n" + derivation_verification,
                                           'xx'])
                     self._final_i = i
-                    return justification, "Incomplete"
-
+                    verification = "Incomplete"
+                    break
 
                 sub_derivation = derivation_verification[1:-1]
 
@@ -187,8 +195,6 @@ class Derivation:
 
                 for line in sub_derivation:
                     if type(line) is list:
-                        last_bit = line[1]
-
                         find_asms = re.finditer(
                             r'asm(\d+)',
                             line[1]
@@ -207,10 +213,13 @@ class Derivation:
                                      str(from_derives))
                                 )
                             else:
-                                replacements.append(
-                                    (match_name,
-                                     f"asm{self.assumptions.index(from_assumptions) + 1}")
-                                )
+                                try:
+                                    replacements.append(
+                                        (match_name,
+                                         f"asm{self.assumptions.index(from_assumptions) + 1}")
+                                    )
+                                except ValueError:
+                                    pass
 
                         for old, new in replacements:
                             line[1] = line[1].replace(old, new)
@@ -252,7 +261,7 @@ class Derivation:
                         print("Component not in environment", component)
                         justification.append(["Illegal Operation ?? " + str(component), 'xx'])
                         self._final_i = i
-                        return justification, "Incomplete"
+                        verification = "Incomplete"
                 else:
                     try:
                         application = derivation_step.apply()
@@ -295,15 +304,36 @@ class Derivation:
 
             i += 1
 
-        verification = ""
-        if self.consequence in environment:
-            verification += "Q.E.D."
-        else:
-            verification += "X < Incomplete / Incorrect > X"
+        if verification == "":
+            if self.consequence in environment:
+                verification += "Q.E.D."
+            else:
+                verification += "X < Incomplete / Incorrect > X"
 
         self._final_i = i
 
-        return justification, verification
+        ####
+
+
+        axiom_and_consequence = " ".join([
+            "; ".join([str(axiom) for axiom in sorted(list(set(self.axioms[::])),
+                                                      key=lambda _: str(_))
+                       if axiom not in set(self.assumptions[::])]),
+            TRUTH_SYMBOLS['proves'], consequence_str])
+
+
+        max_line_len = Derivation.max_line_len(justification)
+
+        justification = Derivation.format_justification(max_line_len, justification, join_after)
+
+        result = [
+            axiom_and_consequence, f"Show {consequence_str}:", *justification, verification
+        ]
+
+        if join_after:
+            return "\n".join(result)
+        else:
+            return result
 
     @classmethod
     def max_line_len(cls, justification):
@@ -317,16 +347,14 @@ class Derivation:
     def format_justification(cls, max_line_len, justification, join_after):
         if join_after:
             return [
-                "| " + line[0].rstrip() + " " * (max_line_len - len(line[0].rstrip())) + line[1].strip()
-                for line in justification
+                "| " + line[0].rstrip() + " " * (max_line_len - len(line[0].rstrip()))
+                + line[1].strip() for line in justification
             ]
-
         else:
             return [
                 ["| " + line[0].rstrip(), line[1].strip()]
                 for line in justification
             ]
-
 
 
 class DirectDerivation(Derivation):
@@ -344,29 +372,9 @@ class DirectDerivation(Derivation):
                  derivation: list[Union[Argument, Derivation, SubDerivation]]):
         super().__init__("Direct Derivation", axioms, [], consequence, derivation)
 
-    def verify(self, verify_number_at=1, join_after=True):
-        justification, verification = super().verify(verify_number_at)
-
-        consequence = str(self.consequence)
-
-        axiom_and_consequence = " ".join(["; ".join([str(axiom)
-                                                     for axiom in sorted(list(set(self.axioms[::])),
-                                                                         key=lambda _: str(_))]),
-                                          TRUTH_SYMBOLS['proves'],
-                                          str(self.consequence)])
-
-        max_line_len = Derivation.max_line_len(justification)
-
-        justification = Derivation.format_justification(max_line_len, justification, join_after)
-
-        result = [
-            axiom_and_consequence, f"Show {consequence}:", *justification, verification
-        ]
-
-        if join_after:
-            return "\n".join(result)
-        else:
-            return result
+    def verify(self, verify_number_at=1, join_after=True, con=None):
+        return super().verify(verify_number_at, join_after=join_after,
+                              consequence_str=str(self.consequence))
 
 
 class ConditionalDerivation(Derivation):
@@ -393,6 +401,7 @@ class ConditionalDerivation(Derivation):
         new_consequence = consequence.components[1]
         self.assumptions_str = str(consequence.components[0])
 
+        derivation: list  # quiets warning on next line on -------vvv
         derivation = [Assumption(consequence.components[0])] + derivation
 
         super().__init__("Conditional Derivation", axioms,
@@ -407,31 +416,9 @@ class ConditionalDerivation(Derivation):
     def __repr__(self):
         return self.__str__()
 
-    def verify(self, verify_number_at=1, join_after=True):
-        justification, verification = super().verify(verify_number_at)
-
-        axiom_and_consequence = " ".join(["; ".join([str(axiom)
-                                                     for axiom in sorted(list(set(self.axioms[::])),
-                                                                         key=lambda _: str(_))
-                                                     if axiom not in set(self.assumptions[::])
-                                                     ]),
-                                          TRUTH_SYMBOLS['proves'],
-                                          str(self.old_consequence)])
-
-        consequence = str(self.old_consequence)
-
-        max_line_len = Derivation.max_line_len(justification)
-
-        justification = Derivation.format_justification(max_line_len, justification, join_after)
-
-        result = [
-            axiom_and_consequence, f"Show {consequence}:", *justification, verification
-        ]
-
-        if join_after:
-            return "\n".join(result)
-        else:
-            return result
+    def verify(self, verify_number_at=1, join_after=True, con=None):
+        return super().verify(verify_number_at, join_after=join_after,
+                              consequence_str=str(self.old_consequence))
 
 
 class IndirectDerivation(Derivation):
@@ -453,35 +440,15 @@ class IndirectDerivation(Derivation):
         assumptions = [LogicalNot(consequence)]
         self.assumptions_str = str(assumptions[0])
 
+        derivation: list  # quiets warning here -----vvv
         derivation = [Assumption(~consequence)] + derivation
 
         super().__init__("Indirect Derivation", axioms,
                          [], consequence, derivation)
 
-    def verify(self, verify_number_at=1, join_after=True):
-        justification, verification = super().verify(verify_number_at)
-
-        axiom_and_consequence = " ".join(["; ".join([str(axiom)
-                                                     for axiom in sorted(list(set(self.axioms[::])),
-                                                                         key=lambda _: str(_))
-                                                     if axiom not in set(self.assumptions[::])]),
-                                          TRUTH_SYMBOLS['proves'],
-                                          str(self.consequence)])
-
-        consequence = str(self.consequence)
-
-        max_line_len = Derivation.max_line_len(justification)
-
-        justification = Derivation.format_justification(max_line_len, justification, join_after)
-
-        result = [
-            axiom_and_consequence, f"Show {consequence}:", *justification, verification
-        ]
-
-        if join_after:
-            return "\n".join(result)
-        else:
-            return result
+    def verify(self, verify_number_at=1, join_after=True, con=None):
+        return super().verify(verify_number_at, join_after=join_after,
+                              consequence_str=str(self.consequence))
 
 
 class SubDerivation:
@@ -512,3 +479,18 @@ class SubDerivation:
             else:
                 self.consequence = self.derivation.consequence
 
+
+if __name__ == '__main__':
+    A, B, C = Atom.generate_atomics_set(3)
+
+    print(IndirectDerivation(
+        axioms=[~A | ~B],
+        consequence=~(A & B),
+        derivation=[
+            DoubleNegation(~~(A & B), A & B),
+            Simplification(A & B, A),
+            Simplification(A & B, B),
+            ModusTollendoPonens(~A | ~B, A),
+            Contradiction(B, ~B)
+        ]
+    ).verify())

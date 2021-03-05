@@ -19,7 +19,7 @@ class Argument:
         self.argument_name = argument_name
 
     def __str__(self):
-        return self.argument_name + ": {" + \
+        return self.argument_name.capitalize() + ": {" + \
                ", ".join([str(component) for component in self.ls]) + "}"
 
     def __getattr__(self, name):
@@ -72,7 +72,7 @@ class Assumption(Argument):
     num_inputs = 1
 
     def __init__(self, l1: Evaluable):
-        super().__init__("assumption", l1)
+        super().__init__("ASsuMption", l1)
 
     def get_application(self) -> Union[Evaluable, None]:
         return self.l1
