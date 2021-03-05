@@ -183,7 +183,7 @@ class Derivation:
 
                 if not valid_derivation:
                     print("Invalid subderivation", derivation_verification)
-                    justification.append(["Invalid subderivation\n" + derivation_verification,
+                    justification.append(["Invalid subderivation\n" + str(derivation_verification),
                                           'xx'])
                     self._final_i = i
                     verification = "Incomplete"
@@ -291,6 +291,7 @@ class Derivation:
                 ])
 
                 environment.append(application)
+                ##
                 self.derives.update({application: i})
 
             prove_line = ""
@@ -300,7 +301,7 @@ class Derivation:
 
             if prove_line != "":
                 # add line
-                justification.append([str(i+1), prove_line + " " + str(i)])
+                justification.append([str(i+1), prove_line + " " + str(self.derives[application])])
 
             i += 1
 
@@ -313,7 +314,6 @@ class Derivation:
         self._final_i = i
 
         ####
-
 
         axiom_and_consequence = " ".join([
             "; ".join([str(axiom) for axiom in sorted(list(set(self.axioms[::])),
@@ -390,7 +390,7 @@ class ConditionalDerivation(Derivation):
     def __init__(self,
                  axioms: list[Evaluable],
                  consequence: Evaluable,
-                 derivation: list[Argument, SubDerivation]):
+                 derivation: list[Union[Argument, Derivation, SubDerivation]]):
         # need to add X as axiom
         assumptions = []
         self.old_consequence = consequence
@@ -483,14 +483,17 @@ class SubDerivation:
 if __name__ == '__main__':
     A, B, C = Atom.generate_atomics_set(3)
 
-    print(IndirectDerivation(
-        axioms=[~A | ~B],
-        consequence=~(A & B),
+    print(ConditionalDerivation(
+        axioms=[(A & B) >> C],
+        consequence=A >> (B >> C),
         derivation=[
-            DoubleNegation(~~(A & B), A & B),
-            Simplification(A & B, A),
-            Simplification(A & B, B),
-            ModusTollendoPonens(~A | ~B, A),
-            Contradiction(B, ~B)
+            ConditionalDerivation(
+                axioms=[],
+                consequence=B >> C,
+                derivation=[
+                    Conjunction(A, B),
+                    ModusPonens((A & B) >> C, A & B)
+                ]
+            )
         ]
     ).verify())
