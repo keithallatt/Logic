@@ -67,6 +67,20 @@ class Contradiction(Argument):
         return [self.l1, self.l2]
 
 
+class Assumption(Argument):
+    """ Assume p; """
+    num_inputs = 1
+
+    def __init__(self, l1: Evaluable):
+        super().__init__("assumption", l1)
+
+    def get_application(self) -> Union[Evaluable, None]:
+        return self.l1
+
+    def required_propositions(self):
+        return []
+
+
 class Repeat(Argument):
     """ p; therefore p """
     num_inputs = 1

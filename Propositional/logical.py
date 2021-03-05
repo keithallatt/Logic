@@ -290,6 +290,20 @@ class Atom(Evaluable):
     def __hash__(self):
         return hash(self.__str__())
 
+    @classmethod
+    def generate_atomics_set(cls, number_of: int):
+        if number_of <= 0:
+            return []
+        elif number_of <= 26:
+            return [
+                Atom(chr(ord("A") + i)) for i in range(number_of)
+            ]
+        else:
+            raise NotImplementedError("Not Implemented. "
+                                      "[Propositional.logical.Atom.generate_atomics_set]")
+
+
+
 
 class LogicalConnective(Evaluable):
     def __init__(self, *components: Evaluable,
