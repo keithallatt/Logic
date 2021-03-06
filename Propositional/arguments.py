@@ -7,15 +7,12 @@ import sys
 
 
 class Argument:
-    """  """
+    """ An argument is a list of propositions. We say C follows from any set of propositions
+        (P_1, ..., P_n), if C must be true whenever all P_i are true (1 <= i <= n). """
     num_inputs = 0
 
     def __init__(self, argument_name, *ls: Evaluable):
         self.ls = ls
-        i = 1
-        for component in ls:
-            self.__setattr__("l"+str(i), component)
-            i += 1
         self.argument_name = argument_name
 
     def __str__(self):
@@ -42,15 +39,21 @@ class Argument:
 
     @abstractmethod
     def get_application(self) -> Union[Evaluable, None]:
+        """ Get the consequence of this argument. (I.e. return C) """
         pass
 
     def apply(self):
+        """ Return the consequence if the argument is sound (propositions true). """
         if (application := self.get_application()) is not None:
             return application
         else:
             raise LogicalException(f"No application of {self.argument_name} found.")
 
     def required_propositions(self):
+        """ Not all arguments require that all components are true. For example,
+            (A ⊢ A ∨ B), but to write the argument, we write Addition(A, A | B), but
+            A ∨ B is a consequence, so not required. For some arguments, this is not
+            necessary, so by default all Evaluable's input """
         return self.ls
 
 
@@ -68,7 +71,7 @@ class Contradiction(Argument):
         return None
 
     def required_propositions(self):
-        return [self.l1, self.l2]
+        return self.ls[:2]
 
 
 class Assumption(Argument):
@@ -79,7 +82,7 @@ class Assumption(Argument):
         super().__init__("ASsuMption", l1)
 
     def get_application(self) -> Union[Evaluable, None]:
-        return self.l1
+        return self.ls[0]
 
     def required_propositions(self):
         return []
@@ -93,7 +96,7 @@ class Repeat(Argument):
         super().__init__("Repetition", l1)
 
     def get_application(self) -> Union[Evaluable, None]:
-        return self.l1
+        return self.ls[0]
 
 
 class ModusPonens(Argument):
@@ -105,22 +108,21 @@ class ModusPonens(Argument):
 
     def get_application(self) -> Union[Evaluable, None]:
         logical_implies = LOGICAL_CONNECTIVES['implies']
+        l1, l2 = self.ls[:2]
+        if type(l1) is logical_implies:
+            l1: LogicalConnective
+            premise = l1.components[0]
+            consequence = l1.components[1]
 
-        if type(self.l1) is logical_implies:
-            self.l1: LogicalConnective
-            premise = self.l1.components[0]
-            consequence = self.l1.components[1]
-
-            if premise == self.l2:
+            if premise == l2:
                 return consequence
-        if type(self.l2) is logical_implies:
-            self.l2: LogicalConnective
-            premise = self.l2.components[0]
-            consequence = self.l2.components[1]
+        if type(l2) is logical_implies:
+            l2: LogicalConnective
+            premise = l2.components[0]
+            consequence = l2.components[1]
 
-            if premise == self.l1:
+            if premise == l1:
                 return consequence
-
         return None
 
 
@@ -133,20 +135,20 @@ class ModusTollens(Argument):
 
     def get_application(self) -> Union[Evaluable, None]:
         logical_implies = LOGICAL_CONNECTIVES['implies']
+        l1, l2 = self.ls[:2]
+        if type(l1) is logical_implies:
+            l1: LogicalConnective
+            premise = l1.components[0]
+            consequence = l1.components[1]
 
-        if type(self.l1) is logical_implies:
-            self.l1: LogicalConnective
-            premise = self.l1.components[0]
-            consequence = self.l1.components[1]
-
-            if ~consequence == self.l2 or consequence == ~self.l2:
+            if ~consequence == l2 or consequence == ~l2:
                 return ~premise
-        if type(self.l2) is logical_implies:
-            self.l2: LogicalConnective
-            premise = self.l2.components[0]
-            consequence = self.l2.components[1]
+        if type(l2) is logical_implies:
+            l2: LogicalConnective
+            premise = l2.components[0]
+            consequence = l2.components[1]
 
-            if ~consequence == self.l1 or consequence == ~self.l1:
+            if ~consequence == l1 or consequence == ~l1:
                 return ~premise
 
         return None
@@ -161,17 +163,14 @@ class HypotheticalSyllogism(Argument):
 
     def get_application(self) -> Union[Evaluable, None]:
         logical_implies = LOGICAL_CONNECTIVES['implies']
-
-        if type(self.l1) is logical_implies and type(self.l2) is logical_implies:
-            p = self.l1.components[0]
-            q1 = self.l1.components[1]
-            q2 = self.l2.components[0]
-            r = self.l2.components[1]
-
-            if q1 != q2:
-                return None
-
-            return p >> r
+        l1, l2 = self.ls[:2]
+        if type(l1) is logical_implies and type(l2) is logical_implies:
+            p = l1.components[0]
+            q1 = l1.components[1]
+            q2 = l2.components[0]
+            r = l2.components[1]
+            if q1 == q2:
+                return p >> r
         return None
 
 
@@ -184,21 +183,22 @@ class ModusTollendoPonens(Argument):
 
     def get_application(self) -> Union[Evaluable, None]:
         logical_or = LOGICAL_CONNECTIVES['or']
+        l1, l2 = self.ls[:2]
 
-        if type(self.l1) is logical_or:
-            p, q = self.l1.components[:2]
+        if type(l1) is logical_or:
+            p, q = l1.components[:2]
 
-            if self.l2 == ~p or p == ~self.l2:
+            if l2 == ~p or p == ~l2:
                 return q
-            if self.l2 == ~q or q == ~self.l2:
+            if l2 == ~q or q == ~l2:
                 return p
 
-        if type(self.l2) is logical_or:
-            p, q = self.l2.components[:2]
+        if type(l2) is logical_or:
+            p, q = l2.components[:2]
 
-            if self.l1 == ~p or p == ~self.l1:
+            if l1 == ~p or p == ~l1:
                 return q
-            if self.l1 == ~q or q == ~self.l1:
+            if l1 == ~q or q == ~l1:
                 return p
         return None
 
@@ -212,7 +212,8 @@ class Conjunction(Argument):
         self.get_application()
 
     def get_application(self) -> Union[Evaluable, None]:
-        return self.l1 & self.l2
+        l1, l2 = self.ls[:2]
+        return l1 & l2
 
 
 class Simplification(Argument):
@@ -226,25 +227,26 @@ class Simplification(Argument):
 
     def get_application(self) -> Union[Evaluable, None]:
         logical_and = LOGICAL_CONNECTIVES['and']
+        l1, l2 = self.ls[:2]
 
-        if type(self.l1) is logical_and:
-            p, q = self.l1.components[:2]
+        if type(l1) is logical_and:
+            p, q = l1.components[:2]
 
-            if self.l2 == p:
-                self.rp = [self.l1]
-                return self.l2
-            if self.l2 == q:
-                self.rp = [self.l1]
-                return self.l2
-        if type(self.l2) is logical_and:
-            p, q = self.l2.components[:2]
+            if l2 == p:
+                self.rp = [l1]
+                return l2
+            if l2 == q:
+                self.rp = [l1]
+                return l2
+        if type(l2) is logical_and:
+            p, q = l2.components[:2]
 
-            if self.l1 == p:
-                self.rp = [self.l2]
-                return self.l1
-            if self.l1 == q:
-                self.rp = [self.l2]
-                return self.l1
+            if l1 == p:
+                self.rp = [l2]
+                return l1
+            if l1 == q:
+                self.rp = [l2]
+                return l1
         return None
 
     def required_propositions(self):
@@ -260,25 +262,26 @@ class Addition(Argument):
 
     def get_application(self) -> Union[Evaluable, None]:
         logical_or = LOGICAL_CONNECTIVES['or']
+        l1, l2 = self.ls[:2]
 
-        if type(self.l1) is logical_or:
-            p, q = self.l1.components[:2]
+        if type(l1) is logical_or:
+            p, q = l1.components[:2]
 
-            if self.l2 == p:
-                return self.l1
-            if self.l2 == q:
-                return self.l1
-        if type(self.l2) is logical_or:
-            p, q = self.l2.components[:2]
+            if l2 == p:
+                return l1
+            if l2 == q:
+                return l1
+        if type(l2) is logical_or:
+            p, q = l2.components[:2]
 
-            if self.l1 == p:
-                return self.l2
-            if self.l1 == q:
-                return self.l2
+            if l1 == p:
+                return l2
+            if l1 == q:
+                return l2
         return None
 
     def required_propositions(self):
-        return [self.l1]
+        return self.ls[:1]
 
 
 class DoubleNegation(Argument):
@@ -289,12 +292,14 @@ class DoubleNegation(Argument):
         super().__init__("Double Negation", l1, l2)
 
     def get_application(self) -> Union[Evaluable, None]:
-        if self.l1 == ~~self.l2 or ~~self.l1 == self.l2:
-            return self.l2
+        l1, l2 = self.ls[:2]
+
+        if l1 == ~~l2 or ~~l1 == l2:
+            return l2
         return None
 
     def required_propositions(self):
-        return [self.l1]
+        return self.ls[:1]
 
 
 class BidirectionalConditional(Argument):
@@ -311,35 +316,36 @@ class BidirectionalConditional(Argument):
     def get_application(self) -> Union[Evaluable, None]:
         logical_iff = LOGICAL_CONNECTIVES['iff']
         logical_implies = LOGICAL_CONNECTIVES['implies']
+        l1, l2 = self.ls[:2]
 
-        if type(self.l1) is logical_iff and type(self.l2) is logical_implies:
+        if type(l1) is logical_iff and type(l2) is logical_implies:
             # first two are elimination
-            p1, q1 = self.l1.components[:2]
-            p2, q2 = self.l2.components[:2]
+            p1, q1 = l1.components[:2]
+            p2, q2 = l2.components[:2]
 
             if p1 == p2 and q1 == q2:
-                self.rp = [self.l1]
-                return self.l2
+                self.rp = [l1]
+                return l2
             if p1 == q2 and q1 == p2:
-                self.rp = [self.l1]
-                return self.l2
-        if type(self.l2) is logical_iff and type(self.l1) is logical_implies:
+                self.rp = [l1]
+                return l2
+        if type(l2) is logical_iff and type(l1) is logical_implies:
             # elimination
-            p1, q1 = self.l1.components[:2]
-            p2, q2 = self.l2.components[:2]
+            p1, q1 = l1.components[:2]
+            p2, q2 = l2.components[:2]
 
             if p1 == p2 and q1 == q2:
-                self.rp = [self.l2]
-                return self.l1
+                self.rp = [l2]
+                return l1
             if p1 == q2 and q1 == p2:
-                self.rp = [self.l2]
-                return self.l1
-        if type(self.l1) is logical_implies and type(self.l2) is logical_implies:
+                self.rp = [l2]
+                return l1
+        if type(l1) is logical_implies and type(l2) is logical_implies:
             # introduction
-            p1, q1 = self.l1.components[:2]
-            p2, q2 = self.l2.components[:2]
+            p1, q1 = l1.components[:2]
+            p2, q2 = l2.components[:2]
             if p1 == q2 and q1 == p2:
-                self.rp = [self.l1, self.l2]
+                self.rp = [l1, l2]
                 return p1 ^ q1
         return None
 
