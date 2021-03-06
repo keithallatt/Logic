@@ -1,22 +1,32 @@
 from __future__ import annotations
-# going to need this, for logical connectives.
-# from Propositional.logical import *
+from Propositional.logical import LogicalException
+
+PREDICATE_SYMBOLS = {
+    'forall': u'\u2200',
+    'exists': u'\u2203',
+    'exists unique': u'\u2203!',
+}
+
+MATH_SYMBOLS = {
+    'times': u'\u00D7',
+}
 
 
 class Predicate:
     def evaluate(self, context: dict):
-        return None
+        pass
 
     def __str__(self):
         pass
 
 
-class Sentence:
+class Term:
+    """  """
     def interpret(self, context: dict):
         pass
 
 
-class Variable(Sentence):
+class Variable(Term):
     def __init__(self, variable_name: str):
         self.variable_name = variable_name
 
@@ -27,8 +37,45 @@ class Variable(Sentence):
         return self.variable_name
 
 
+class Function(Term):
+    def __init__(self, function_name: str, terms: list[Term], notation='prefix'):
+        """
+
+        :param function_name: name / symbol of function (R, ×, etc.)
+        :param terms: the terms being fed as input to this function.
+        :param notation: either prefix ( R(x, y) ) or infix (x × y), or polish ( f x y )
+        """
+        self.function_name = function_name
+        self.terms = terms
+        self.arity = len(terms)
+        self.notation = notation
+
+    def interpret(self, context: dict):
+        interpretation = context.get(self.function_name)
+        if callable(interpretation):
+            return interpretation(*[term.interpret(context) for term in self.terms])
+        else:
+            raise LogicalException(f"Interpretation of {self.function_name} not callable.")
+
+    def __str__(self):
+        if self.notation.lower() == 'prefix':
+            term_group = ", ".join([str(term) for term in self.terms])
+            return f"{self.function_name}({term_group})"
+        elif self.notation.lower() == 'polish':
+            term_group = " ".join([str(term) for term in self.terms])
+            return f"{self.function_name} {term_group}"
+        elif self.notation.lower() == 'infix':
+            if self.arity != 2:
+                self.notation = 'prefix'
+                return str(self)
+            return f"({str(self.terms[0])} {self.function_name} {str(self.terms[1])})"
+        else:
+            self.notation = 'prefix'
+            return str(self)
+
+
 class Equality(Predicate):
-    def __init__(self, lhs: Sentence, rhs: Sentence):
+    def __init__(self, lhs: Term, rhs: Term):
         self.lhs = lhs
         self.rhs = rhs
 
@@ -36,7 +83,7 @@ class Equality(Predicate):
         return self.lhs.interpret(context) == self.rhs.interpret(context)
 
     def __str__(self):
-        return str(self.lhs) + " = " + str(self.rhs)
+        return f"({str(self.lhs)} = {str(self.rhs)})"
 
 
 class Quantifier(Predicate):
@@ -59,6 +106,9 @@ class Universal(Quantifier):
                 return False
         return True
 
+    def __str__(self):
+        return f"({PREDICATE_SYMBOLS['forall']} {self.variable}){str(self.sub_predicate)}"
+
 
 class Existential(Quantifier):
     def __init__(self, sub_pred: Predicate, variable: Variable, domain: list = None):
@@ -73,21 +123,18 @@ class Existential(Quantifier):
                 return True
         return False
 
-
-def models(context: list, pred: Predicate):
-    pass
+    def __str__(self):
+        return f"({PREDICATE_SYMBOLS['exists']} {self.variable}){str(self.sub_predicate)}"
 
 
 if __name__ == '__main__':
-    context_set = [
-        0, 1, 2, 3, 4
-    ]
+    x = Variable('x')
+    y = Variable('y')
+    times = Function(MATH_SYMBOLS['times'], [x, y], notation='infix')
+    context_ = {
+        MATH_SYMBOLS['times']: lambda x_, y_: x_ * y_,
+        'x': 3,
+        'y': 4
+    }
 
-    x, y = Variable("x"), Variable("y")
-
-    eq = Equality(x, y)
-
-    un1 = Existential(eq, x, domain=context_set)
-    un2 = Existential(un1, y, domain=context_set)
-
-    print(un2.evaluate({}))
+    print(times.interpret(context_))
