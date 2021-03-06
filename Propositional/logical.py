@@ -291,12 +291,12 @@ class Atom(Evaluable):
         return hash(self.__str__())
 
     @classmethod
-    def generate_atomics_set(cls, number_of: int):
+    def generate_atomics_set(cls, number_of: int, start_at='A'):
         if number_of <= 0:
             return []
         elif number_of <= 26:
             return [
-                Atom(chr(ord("A") + i)) for i in range(number_of)
+                Atom(chr(ord(start_at) + i)) for i in range(number_of)
             ]
         else:
             raise NotImplementedError("Not Implemented. "

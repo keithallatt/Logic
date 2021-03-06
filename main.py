@@ -1,6 +1,6 @@
 from Propositional.logical import Atom
 from Propositional.derivations import DirectDerivation, ConditionalDerivation, IndirectDerivation
-from Propositional.arguments import Addition, ModusPonens, ModusTollens, ModusTollendoPonens
+from Propositional.arguments import Addition, ModusPonens, ModusTollens, ModusTollendoPonens, Conjunction, Contradiction
 from Propositional.theorem import DisjunctionElimination, TertiumNonDatur, Theorem
 
 if __name__ == '__main__':
@@ -36,10 +36,12 @@ if __name__ == '__main__':
     )
 
     print(dd.verify())
+    print("-" * 25)
 
     # Turn into a theorem.
     constructive_dilemma = Theorem('Constructive Dilemma', dd)
 
+    # use the theorem in another derivation.
     dd2 = IndirectDerivation(
         axioms=[A >> B, (~A) >> C],
         consequence=B | C,
@@ -50,3 +52,50 @@ if __name__ == '__main__':
     )
 
     print(dd2.verify())
+    print("-" * 25)
+
+    # separate question. Good example
+
+    P, Q, R = [Atom(chr(ord("P") + i)) for i in range(3)]
+
+    print(IndirectDerivation(
+        axioms=[(~P) | (~Q), (~P) >> Q, (P & ~Q) >> R, (~P & Q) >> R],
+        consequence=R,
+        derivation=[
+            ModusTollens((P & ~Q) >> R, ~R),
+            ModusTollens((~P & Q) >> R, ~R),
+            ConditionalDerivation(
+                axioms=[],
+                consequence=P >> Q,
+                derivation=[
+                    IndirectDerivation(
+                        axioms=[],
+                        consequence=Q,
+                        derivation=[
+                            Conjunction(P, ~Q),
+                            Contradiction(P & ~Q, ~(P & ~Q))
+                        ]
+                    )
+                ]
+            ),
+            ConditionalDerivation(
+                axioms=[],
+                consequence=Q >> P,
+                derivation=[
+                    IndirectDerivation(
+                        axioms=[],
+                        consequence=P,
+                        derivation=[
+                            Conjunction(~P, Q),
+                            Contradiction(~P & Q, ~(~P & Q))
+                        ]
+                    )
+                ]
+            ),
+            TertiumNonDatur(therefore=P | ~P),
+            DisjunctionElimination(P | ~P, P >> Q, ~P >> Q, therefore=Q),
+            ModusTollendoPonens(Q, ~P | ~Q),
+            Conjunction(~P, Q),
+            ModusPonens(~P & Q, (~P & Q) >> R)
+        ]
+    ).verify())

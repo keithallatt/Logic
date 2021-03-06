@@ -34,7 +34,7 @@ class Derivation:
         return "Q.E.D." in self.verify()
 
     def __str__(self):
-        axioms = "; ".join([
+        axioms = ", ".join([
             str(axiom) for axiom in self.axioms
         ])
 
@@ -221,6 +221,9 @@ class Derivation:
                                 except ValueError:
                                     pass
 
+                        # can't modify until all found (in case asm4 -> asm2 -> asm1 -> pr1) kinda
+                        # thing. It can potentially cause unexpected results.
+
                         for old, new in replacements:
                             line[1] = line[1].replace(old, new)
 
@@ -319,7 +322,7 @@ class Derivation:
         ####
 
         axiom_and_consequence = " ".join([
-            "; ".join([str(axiom) for axiom in sorted(list(set(self.axioms[::])),
+            ". ".join([str(axiom) for axiom in sorted(list(set(self.axioms[::])),
                                                       key=lambda _: str(_))
                        if axiom not in set(self.assumptions[::])]),
             TRUTH_SYMBOLS['proves'], consequence_str])
