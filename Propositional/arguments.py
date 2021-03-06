@@ -100,14 +100,16 @@ class ModusPonens(Argument):
         super().__init__("Modus Ponens", l1, l2)
 
     def get_application(self) -> Union[Evaluable, None]:
-        if type(self.l1) is LogicalImplies:
+        logical_implies = LOGICAL_CONNECTIVES['implies']
+
+        if type(self.l1) is logical_implies:
             self.l1: LogicalConnective
             premise = self.l1.components[0]
             consequence = self.l1.components[1]
 
             if premise == self.l2:
                 return consequence
-        if type(self.l2) is LogicalImplies:
+        if type(self.l2) is logical_implies:
             self.l2: LogicalConnective
             premise = self.l2.components[0]
             consequence = self.l2.components[1]
@@ -126,14 +128,16 @@ class ModusTollens(Argument):
         super().__init__("Modus Tollens", l1, l2)
 
     def get_application(self) -> Union[Evaluable, None]:
-        if type(self.l1) is LogicalImplies:
+        logical_implies = LOGICAL_CONNECTIVES['implies']
+
+        if type(self.l1) is logical_implies:
             self.l1: LogicalConnective
             premise = self.l1.components[0]
             consequence = self.l1.components[1]
 
             if ~consequence == self.l2 or consequence == ~self.l2:
                 return ~premise
-        if type(self.l2) is LogicalImplies:
+        if type(self.l2) is logical_implies:
             self.l2: LogicalConnective
             premise = self.l2.components[0]
             consequence = self.l2.components[1]
@@ -152,7 +156,9 @@ class HypotheticalSyllogism(Argument):
         super().__init__("Modus Tollens", l1, l2)
 
     def get_application(self) -> Union[Evaluable, None]:
-        if type(self.l1) is LogicalImplies and type(self.l2) is LogicalImplies:
+        logical_implies = LOGICAL_CONNECTIVES['implies']
+
+        if type(self.l1) is logical_implies and type(self.l2) is logical_implies:
             p = self.l1.components[0]
             q1 = self.l1.components[1]
             q2 = self.l2.components[0]
@@ -173,7 +179,9 @@ class ModusTollendoPonens(Argument):
         super().__init__("Modus Tollendo Ponens", l1, l2)
 
     def get_application(self) -> Union[Evaluable, None]:
-        if type(self.l1) is LogicalOr:
+        logical_or = LOGICAL_CONNECTIVES['or']
+
+        if type(self.l1) is logical_or:
             p, q = self.l1.components[:2]
 
             if self.l2 == ~p or p == ~self.l2:
@@ -181,7 +189,7 @@ class ModusTollendoPonens(Argument):
             if self.l2 == ~q or q == ~self.l2:
                 return p
 
-        if type(self.l2) is LogicalOr:
+        if type(self.l2) is logical_or:
             p, q = self.l2.components[:2]
 
             if self.l1 == ~p or p == ~self.l1:
@@ -213,7 +221,9 @@ class Simplification(Argument):
         self.get_application()
 
     def get_application(self) -> Union[Evaluable, None]:
-        if type(self.l1) is LogicalAnd:
+        logical_and = LOGICAL_CONNECTIVES['and']
+
+        if type(self.l1) is logical_and:
             p, q = self.l1.components[:2]
 
             if self.l2 == p:
@@ -222,7 +232,7 @@ class Simplification(Argument):
             if self.l2 == q:
                 self.rp = [self.l1]
                 return self.l2
-        if type(self.l2) is LogicalAnd:
+        if type(self.l2) is logical_and:
             p, q = self.l2.components[:2]
 
             if self.l1 == p:
@@ -245,14 +255,16 @@ class Addition(Argument):
         super().__init__("Addition", l1, l2)
 
     def get_application(self) -> Union[Evaluable, None]:
-        if type(self.l1) is LogicalOr:
+        logical_or = LOGICAL_CONNECTIVES['or']
+
+        if type(self.l1) is logical_or:
             p, q = self.l1.components[:2]
 
             if self.l2 == p:
                 return self.l1
             if self.l2 == q:
                 return self.l1
-        if type(self.l2) is LogicalOr:
+        if type(self.l2) is logical_or:
             p, q = self.l2.components[:2]
 
             if self.l1 == p:
@@ -293,7 +305,10 @@ class BidirectionalConditional(Argument):
         self.get_application()
 
     def get_application(self) -> Union[Evaluable, None]:
-        if type(self.l1) is LogicalIff and type(self.l2) is LogicalImplies:
+        logical_iff = LOGICAL_CONNECTIVES['iff']
+        logical_implies = LOGICAL_CONNECTIVES['implies']
+
+        if type(self.l1) is logical_iff and type(self.l2) is logical_implies:
             # first two are elimination
             p1, q1 = self.l1.components[:2]
             p2, q2 = self.l2.components[:2]
@@ -304,7 +319,7 @@ class BidirectionalConditional(Argument):
             if p1 == q2 and q1 == p2:
                 self.rp = [self.l1]
                 return self.l2
-        if type(self.l2) is LogicalIff and type(self.l1) is LogicalImplies:
+        if type(self.l2) is logical_iff and type(self.l1) is logical_implies:
             # elimination
             p1, q1 = self.l1.components[:2]
             p2, q2 = self.l2.components[:2]
@@ -315,7 +330,7 @@ class BidirectionalConditional(Argument):
             if p1 == q2 and q1 == p2:
                 self.rp = [self.l2]
                 return self.l1
-        if type(self.l1) is LogicalImplies and type(self.l2) is LogicalImplies:
+        if type(self.l1) is logical_implies and type(self.l2) is logical_implies:
             # introduction
             p1, q1 = self.l1.components[:2]
             p2, q2 = self.l2.components[:2]

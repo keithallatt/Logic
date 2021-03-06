@@ -42,28 +42,28 @@ class Evaluable:
         pass
 
     def __and__(self, other):
-        return LogicalAnd(self, other)
+        return LOGICAL_CONNECTIVES['and'](self, other)
     
     def __rand__(self, other):
         return self.__and__(other)
     
     def __or__(self, other):
-        return LogicalOr(self, other)
+        return LOGICAL_CONNECTIVES['or'](self, other)
     
     def __ror__(self, other):
         return self.__or__(other)
     
     def __invert__(self):
-        return LogicalNot(self)
+        return LOGICAL_CONNECTIVES['not'](self)
 
     def __rshift__(self, other):
-        return LogicalImplies(self, other)
+        return LOGICAL_CONNECTIVES['implies'](self, other)
 
     def __lshift__(self, other):
-        return LogicalImplies(other, self)
+        return LOGICAL_CONNECTIVES['implies'](other, self)
 
     def __xor__(self, other):
-        return LogicalIff(self, other)
+        return LOGICAL_CONNECTIVES['iff'](self, other)
 
     def atoms_contained(self):
         return []
@@ -301,8 +301,6 @@ class Atom(Evaluable):
         else:
             raise NotImplementedError("Not Implemented. "
                                       "[Propositional.logical.Atom.generate_atomics_set]")
-
-
 
 
 class LogicalConnective(Evaluable):
@@ -564,7 +562,7 @@ class LogicalConnective(Evaluable):
         return hash(self.__str__())
 
 
-def __generate_connective__(name: str, func: Callable, **kwargs):
+def __generate_connective__(name: str, func: Callable = None, **kwargs):
     """
     Generate logical connective from name, a function that takes some
     number of boolean values and computes a new boolean. All keyword
@@ -575,6 +573,19 @@ def __generate_connective__(name: str, func: Callable, **kwargs):
     :param kwargs: LogicalConnective keyword arguments.
     :return: the generic logical connective defined.
     """
+
+    if func is None:
+        func = {
+            'or': lambda x, y: x or y,
+            'and': lambda x, y: x and y,
+            'implies': lambda x, y: (not x) or y,
+            'iff': lambda x, y: x is y,
+            'not': lambda x: not x,
+        }.get(name, None)
+        if name == 'not':
+            kwargs.update({'exempt_bin_rest': True})
+        name = LOGICAL_SYMBOLS[name]
+
     class GenericLogical(LogicalConnective):
         def __init__(self, *components: Union[Evaluable]):
             super().__init__(*components, **kwargs)
@@ -594,11 +605,9 @@ def __generate_connective__(name: str, func: Callable, **kwargs):
     return GenericLogical
 
 
-LogicalOr = __generate_connective__(LOGICAL_SYMBOLS["or"], lambda x, y: x or y)
-LogicalAnd = __generate_connective__(LOGICAL_SYMBOLS["and"], lambda x, y: x and y)
-LogicalImplies = __generate_connective__(LOGICAL_SYMBOLS["implies"], lambda x, y: (not x) or y)
-LogicalIff = __generate_connective__(LOGICAL_SYMBOLS["iff"], lambda x, y: not (x ^ y))
-LogicalNot = __generate_connective__(LOGICAL_SYMBOLS["not"], lambda x: not x, exempt_bin_rest=True)
+LOGICAL_CONNECTIVES = {
+    name: __generate_connective__(name) for name in LOGICAL_SYMBOLS.keys()
+}
 
 
 def parse_logical(str_repr: str,
@@ -666,17 +675,11 @@ def parse_logical(str_repr: str,
                                zero_depth_strings[0][1]:].strip(), surround_atoms=False)
     ]
 
-    if operation == "and":
-        return LogicalAnd(sections[0], sections[1])
-    elif operation == "or":
-        return LogicalOr(sections[0], sections[1])
-    elif operation == "implies":
-        return LogicalImplies(sections[0], sections[1])
-    elif operation == "iff":
-        return LogicalIff(sections[0], sections[1])
-    elif operation == "not":
+    if operation == "not":
         if sections[0] is not None and sections[0] != Atom("None", truth_value=False):
             raise LogicalException("'Not' preceded by sentence.")
-        return LogicalNot(sections[1])
+        return LOGICAL_CONNECTIVES['not'](sections[1])
+    elif operation in LOGICAL_SYMBOLS.keys():
+        return LOGICAL_CONNECTIVES[operation](sections[0], sections[1])
     else:
         raise LogicalException(f"Unrecognized operation: {operation}")

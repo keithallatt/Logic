@@ -1,5 +1,6 @@
 from __future__ import annotations
-from Propositional.logical import LogicalException
+from typing import Union
+from Propositional.logical import LogicalException, LOGICAL_SYMBOLS, LOGICAL_CONNECTIVES
 
 PREDICATE_SYMBOLS = {
     'forall': u'\u2200',
@@ -11,13 +12,90 @@ MATH_SYMBOLS = {
     'times': u'\u00D7',
 }
 
+# Predicates
+
 
 class Predicate:
+    def __init__(self):
+        pass
+
+    def __and__(self, other):
+        return PREDICATE_CONNECTIVES['and'](self, other)
+
+    def __rand__(self, other):
+        return self.__and__(other)
+
+    def __or__(self, other):
+        return PREDICATE_CONNECTIVES['or'](self, other)
+
+    def __ror__(self, other):
+        return self.__or__(other)
+
+    def __invert__(self):
+        return PREDICATE_CONNECTIVES['not'](self)
+
+    def __rshift__(self, other):
+        return PREDICATE_CONNECTIVES['implies'](self, other)
+
+    def __lshift__(self, other):
+        return PREDICATE_CONNECTIVES['implies'](other, self)
+
+    def __xor__(self, other):
+        return PREDICATE_CONNECTIVES['iff'](self, other)
+
     def evaluate(self, context: dict):
         pass
 
     def __str__(self):
         pass
+
+
+class Equality(Predicate):
+    def __init__(self, lhs: Term, rhs: Term):
+        super().__init__()
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def evaluate(self, context: dict):
+        return self.lhs.interpret(context) == self.rhs.interpret(context)
+
+    def __str__(self):
+        return f"({str(self.lhs)} = {str(self.rhs)})"
+
+
+# Logical Connectives
+
+def __generate_connective__(name: str):
+    """
+
+    """
+    name, connective = LOGICAL_SYMBOLS[name], LOGICAL_CONNECTIVES[name]
+
+    class GenericPredicate(Predicate):
+        def __init__(self, *components: Union[Predicate]):
+            super().__init__()
+            self.connective = connective(*components)
+            self.components = components
+
+        def evaluate(self, context: dict):
+            truth_values = [c.evaluate(context) for c in self.components]
+            return self.connective.func(*truth_values)
+
+        def __str__(self):
+            return str(self.connective)
+
+        def __repr__(self):
+            return super().__str__()
+
+    return GenericPredicate
+
+
+PREDICATE_CONNECTIVES = {
+    name: __generate_connective__(name) for name in LOGICAL_SYMBOLS.keys()
+}
+
+
+# Terms
 
 
 class Term:
@@ -74,20 +152,12 @@ class Function(Term):
             return str(self)
 
 
-class Equality(Predicate):
-    def __init__(self, lhs: Term, rhs: Term):
-        self.lhs = lhs
-        self.rhs = rhs
-
-    def evaluate(self, context: dict):
-        return self.lhs.interpret(context) == self.rhs.interpret(context)
-
-    def __str__(self):
-        return f"({str(self.lhs)} = {str(self.rhs)})"
+# Quantifiers
 
 
 class Quantifier(Predicate):
     def __init__(self, sub_pred: Predicate, variable: Variable, domain: list = None):
+        super().__init__()
         self.sub_predicate = sub_pred
         self.variable = variable
         self.domain = domain
@@ -127,14 +197,51 @@ class Existential(Quantifier):
         return f"({PREDICATE_SYMBOLS['exists']} {self.variable}){str(self.sub_predicate)}"
 
 
+class UniqueExistential(Quantifier):
+    def __init__(self, sub_pred: Predicate, variable: Variable, domain: list = None):
+        super().__init__(sub_pred, variable, domain)
+
+    def evaluate(self, context: dict):
+        sub_context = {k: v for k, v in context.items()}
+        flag = False
+        for element in self.domain:
+            sub_context.update({self.variable.variable_name: element})
+
+            if self.sub_predicate.evaluate(sub_context):
+                if flag:
+                    return False
+                flag = True
+        return flag
+
+    def __str__(self):
+        return f"({PREDICATE_SYMBOLS['exists unique']} {self.variable}){str(self.sub_predicate)}"
+
+
 if __name__ == '__main__':
     x = Variable('x')
     y = Variable('y')
-    times = Function(MATH_SYMBOLS['times'], [x, y], notation='infix')
+    z = Variable('z')
+
     context_ = {
-        MATH_SYMBOLS['times']: lambda x_, y_: x_ * y_,
         'x': 3,
-        'y': 4
+        'y': 3,
+        'z': 4,
     }
 
-    print(times.interpret(context_))
+    domain_ = [0, 1, 2, 2]
+
+    eq1 = Equality(x, y)
+    eq2 = Equality(y, z)
+    eq3 = Equality(x, z)
+
+    thing = (eq1 & eq2) >> eq3
+
+    forall_z = Universal(thing, z, domain_)
+    forall_y = Universal(forall_z, y, domain_)
+    forall_x = Universal(forall_y, x, domain_)
+
+    ###
+
+    thing = Existential(UniqueExistential(Equality(x, y), y, domain_), x, domain_)
+
+    print(thing, thing.evaluate(context={}))

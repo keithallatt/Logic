@@ -114,7 +114,7 @@ class Derivation:
 
             if not valid:
                 counter_example = ", ".join([
-                    str(atom) if tv else str(LogicalNot(atom)) for atom, tv in atom_ordered.items()
+                    str(atom) if tv else str(~atom) for atom, tv in atom_ordered.items()
                 ])
                 counter_example = f"({counter_example})"
 
@@ -146,7 +146,6 @@ class Derivation:
 
         if not self.derivation:
             self.derivation = [Repeat(self.consequence)]
-
 
         for derivation_step in self.derivation:
             locations = []
@@ -195,12 +194,12 @@ class Derivation:
 
                 for line in sub_derivation:
                     if type(line) is list:
-                        find_asms = re.finditer(
+                        find_assumptions = re.finditer(
                             r'asm(\d+)',
                             line[1]
                         )
                         replacements = []
-                        for asm in find_asms:
+                        for asm in find_assumptions:
                             match_name = asm.group(0)
                             match_num = int(asm.group(1))
 
@@ -321,7 +320,6 @@ class Derivation:
                        if axiom not in set(self.assumptions[::])]),
             TRUTH_SYMBOLS['proves'], consequence_str])
 
-
         max_line_len = Derivation.max_line_len(justification)
 
         justification = Derivation.format_justification(max_line_len, justification, join_after)
@@ -395,7 +393,8 @@ class ConditionalDerivation(Derivation):
         assumptions = []
         self.old_consequence = consequence
 
-        assert type(consequence) is LogicalImplies
+        assert type(consequence) is LOGICAL_CONNECTIVES['implies']
+
         consequences: LogicalConnective
         assumptions.append(consequence.components[0])
         new_consequence = consequence.components[1]
@@ -437,7 +436,7 @@ class IndirectDerivation(Derivation):
                  derivation: list[Union[Argument, Derivation, SubDerivation]]):
 
         # need to add X as axiom
-        assumptions = [LogicalNot(consequence)]
+        assumptions = [~consequence]
         self.assumptions_str = str(assumptions[0])
 
         derivation: list  # quiets warning here -----vvv
