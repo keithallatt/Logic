@@ -19,8 +19,12 @@ class Argument:
         self.argument_name = argument_name
 
     def __str__(self):
-        return self.argument_name.capitalize() + ": {" + \
-               ", ".join([str(component) for component in self.ls]) + "}"
+        arg_name = ''.join([c for c in self.argument_name if c not in ".'"])
+
+        arg_name = ' '.join([word.capitalize() for word in arg_name.split(' ')])
+
+        return arg_name + ": {" + \
+            ", ".join([str(component) for component in self.ls]) + "}"
 
     def __getattr__(self, name):
         """ will only get called for undefined attributes """

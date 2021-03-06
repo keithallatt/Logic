@@ -365,6 +365,7 @@ class LogicalConnective(Evaluable):
         if lst is None and (old is None or new is None):
             return self.copy()
         if lst is not None and old is not None and new is not None:
+            lst: list[tuple[Evaluable, Evaluable]]
             lst.append((old, new))
         if lst is None:
             lst = [(old, new)]

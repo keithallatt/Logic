@@ -8,7 +8,7 @@ class BFSDirectDerivation:
         self.consequence = goal_proposition
 
     def search(self):
-        if type(self.consequence) is LogicalImplies:
+        if type(self.consequence) is LOGICAL_CONNECTIVES['implies']:
             d = ConditionalDerivation(self.axioms, self.consequence, [])
         else:
             d = DirectDerivation(self.axioms, self.consequence, [])
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     for axiom, consequence, derivation in zip(axiom_sets, consequence_set, derivation_sets):
         derivation_type = DirectDerivation
-        if type(consequence) is LogicalImplies:
+        if type(consequence) is LOGICAL_CONNECTIVES['implies']:
             derivation_type = ConditionalDerivation
 
         p1 = derivation_type(

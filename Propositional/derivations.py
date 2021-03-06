@@ -168,6 +168,7 @@ class Derivation:
 
                 new_assumptions = derivation_step.derivation.assumptions[::] + environment[::]
 
+                new_assumptions: list[Evaluable]
                 new_assumptions = [
                     new_assumptions[i] for i in range(len(new_assumptions)) if
                     new_assumptions.index((new_assumptions[i])) == i
@@ -281,6 +282,9 @@ class Derivation:
                 short_name = "".join([char.lower()
                                       for char in derivation_step.argument_name
                                       if char.isupper()])
+
+                if type(derivation_step) is Theorem:
+                    short_name = short_name.upper()
 
                 justification.append([" ".join([
                     str(i) + " " * (len(str(len(self.derivation))) - len(str(i)) + 1),
@@ -477,6 +481,100 @@ class SubDerivation:
                 self.consequence = self.derivation.old_consequence
             else:
                 self.consequence = self.derivation.consequence
+
+
+class Theorem(Argument):
+    """
+    Essentially the same as a Subderivation, but in general form. Therefore we can define objects
+    that can allow us to use 'call into existence' a version of the proof where each atomic
+    proposition in the theorem can be replaced with a valid formula and achieve propositions
+    in the environment of the derivation.
+
+    """
+
+    def __init__(self, argument_name: str, argument: Derivation):
+        super().__init__(argument_name)
+        self.argument = argument
+        self.therefore = None
+        self._instance = False
+
+    def get_application(self) -> Union[Evaluable, None]:
+        if len(self.ls) != len(self.argument.axioms):
+            return None
+
+        if not self._instance:
+            raise LogicalException("Can't get application of uncalled instance.")
+
+        if "Q.E.D." not in self.argument.verify():
+            print("Basic argument not valid:")
+            print(self.argument.verify())
+            return None
+
+        if len(self.argument.axioms) == 0:
+            # tautology member.
+            if forms := self.therefore.search(self.argument.consequence):
+                return self.argument.consequence.replace(forms)
+            return None
+
+        def permutations(lst: list):
+            if len(lst) <= 1:
+                yield lst
+            for i in range(len(lst)):
+                item = lst[i]
+                sub_lst = lst[:i] + lst[i + 1:]
+                for sub_perm in permutations(sub_lst):
+                    yield [item] + sub_perm
+
+        for perm in permutations(list(self.ls)):
+            forms = []
+
+            for ax, l in zip(self.argument.axioms, perm):
+                perm_works = True
+                for form_i, value_i in l.search(ax):
+                    for form_contained, value_contained in forms:
+                        if form_i == form_contained:
+                            if value_i == value_contained:
+                                break
+                            perm_works = False
+                    else:
+                        forms.append((form_i, value_i))
+
+                if not perm_works:
+                    continue
+
+            if set([axiom.replace(forms) for axiom in self.argument.axioms]) == set(self.ls):
+                therefore = self.argument.consequence.replace(forms)
+                return therefore
+
+        return None
+
+    def required_propositions(self):
+        return self.ls
+
+    def argument_complete(self):
+        return self.argument.argument_complete()
+
+    def __call__(self, *args, **kwargs):
+        therefore = kwargs.get('therefore', None)
+        ls = args
+        clone_obj = Theorem(self.argument_name, self.argument)
+        clone_obj.ls = ls
+        clone_obj.therefore = therefore
+        clone_obj._instance = True
+
+        return clone_obj
+
+    def verify(self):
+        return self.argument.verify()
+
+    def __str__(self):
+        if self._instance:
+            return super().__str__()
+        else:
+            return f"{self.argument_name}: {self.argument}"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 if __name__ == '__main__':

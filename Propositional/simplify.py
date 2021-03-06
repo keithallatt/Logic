@@ -214,8 +214,6 @@ class BFS(Simplification):
 
         expanded_props = []
 
-        truth_values_hash = set()
-
         considered = 0
         pruned = 0
 
@@ -285,8 +283,8 @@ class BFS(Simplification):
                 t_equiv = time.time()
 
                 # prevent double negations.
-                if type(next_connective) != LogicalNot:
-                    not_connective = LogicalNot(next_connective)
+                if type(next_connective) != LOGICAL_CONNECTIVES['not']:
+                    not_connective = LOGICAL_CONNECTIVES['not'](next_connective)
                     new_considerations.append(
                         (len(str(not_connective)), next(unique), not_connective)
                     )
@@ -294,14 +292,17 @@ class BFS(Simplification):
                 t_not = time.time()
 
                 for other_term in expanded_props:  # !!!!!!! to_consider.queue [OLD]
-                    for logical_connective in [LogicalAnd, LogicalOr, LogicalImplies, LogicalIff]:
+                    for logical_connective in LOGICAL_CONNECTIVES.values():
+                        if logical_connective == LOGICAL_CONNECTIVES['not']:
+                            continue
+
                         lc1 = logical_connective(other_term, next_connective)
                         lc2 = logical_connective(next_connective, other_term)
 
                         new_considerations.append((len(str(lc1)), next(unique), lc1))
 
                         # only non-commutative operation.
-                        if logical_connective == LogicalImplies:
+                        if logical_connective == LOGICAL_CONNECTIVES['implies']:
                             new_considerations.append((len(str(lc2)), next(unique), lc2))
 
                 t_consider = time.time()
@@ -387,8 +388,8 @@ class FlushNegation(Simplification):
 
         if type(proposition) is Atom:
             # return ¬A if we're negating otherwise A
-            return (LogicalNot(proposition) if negate else proposition), 1
-        elif type(proposition) is LogicalNot:
+            return (LOGICAL_CONNECTIVES['not'](proposition) if negate else proposition), 1
+        elif type(proposition) is LOGICAL_CONNECTIVES['not']:
             inside = proposition.components[0]
             # if negate is True, and is not, so flip negate to False,
             # and set proposition to inside
@@ -397,38 +398,38 @@ class FlushNegation(Simplification):
             negation, depth = self.flush_negation(inside, negate=not negate, verbose=verbose)
             return negation, depth + 1
 
-        elif type(proposition) is LogicalAnd:
+        elif type(proposition) is LOGICAL_CONNECTIVES['and']:
             a, b = proposition.components[:2]
             flush_a, depth_a = self.flush_negation(a, negate=negate, verbose=verbose)
             flush_b, depth_b = self.flush_negation(b, negate=negate, verbose=verbose)
 
             if negate:
-                return LogicalOr(flush_a, flush_b), depth_a + depth_b + 1
+                return (flush_a | flush_b), depth_a + depth_b + 1
             else:
-                return LogicalAnd(flush_a, flush_b), depth_a + depth_b + 1
+                return (flush_a & flush_b), depth_a + depth_b + 1
 
-        elif type(proposition) is LogicalOr:
+        elif type(proposition) is LOGICAL_CONNECTIVES['or']:
             a, b = proposition.components[:2]
             flush_a, depth_a = self.flush_negation(a, negate=negate, verbose=verbose)
             flush_b, depth_b = self.flush_negation(b, negate=negate, verbose=verbose)
 
             if negate:
-                return LogicalAnd(flush_a, flush_b), depth_a + depth_b + 1
+                return (flush_a & flush_b), depth_a + depth_b + 1
             else:
-                return LogicalOr(flush_a, flush_b), depth_a + depth_b + 1
+                return (flush_a | flush_b), depth_a + depth_b + 1
 
-        elif type(proposition) is LogicalImplies:
+        elif type(proposition) is LOGICAL_CONNECTIVES['implies']:
             a, b = proposition.components[:2]
             flush_a, depth_a = self.flush_negation(a, negate=False, verbose=verbose)
 
             if negate:
                 flush_negate_b, depth_b = self.flush_negation(b, negate=negate, verbose=verbose)
-                return LogicalAnd(flush_a, flush_negate_b), depth_a + depth_b + 1
+                return (flush_a & flush_negate_b), depth_a + depth_b + 1
             else:
                 flush_b, depth_b = self.flush_negation(b, negate=negate, verbose=verbose)
-                return LogicalImplies(flush_a, flush_b), depth_a + depth_b + 1
+                return (flush_a >> flush_b), depth_a + depth_b + 1
 
-        elif type(proposition) is LogicalIff:
+        elif type(proposition) is LOGICAL_CONNECTIVES['iff']:
             a, b = proposition.components[:2]
 
             # if negate, then these are
@@ -437,9 +438,9 @@ class FlushNegation(Simplification):
             flush_b, depth_b = self.flush_negation(b, negate=False, verbose=verbose)
 
             if negate:
-                return LogicalIff(flush_negate_a, flush_b), depth_b + depth_a_n + 1
+                return (flush_negate_a ^ flush_b), depth_b + depth_a_n + 1
             else:
-                return LogicalIff(flush_a, flush_b), depth_a + depth_b + 1
+                return (flush_a ^ flush_b), depth_a + depth_b + 1
 
         # raise logical exception if ever reaches here
         raise LogicalException("Malformed proposition in search.")
@@ -460,6 +461,9 @@ class FlushNegation(Simplification):
 
 def gen_connective_from_truth_table(truth_table, atomics_bank=None):
     def make_conn(_lst, conn, fallback=Falsehood()):
+        conn = LOGICAL_CONNECTIVES.get(conn)
+        if conn is None:
+            raise LogicalException("Can't find connective: "+str(conn))
         if len(_lst) == 0:
             return fallback
         if len(_lst) == 1:
@@ -472,11 +476,11 @@ def gen_connective_from_truth_table(truth_table, atomics_bank=None):
 
     for tv in truth_table:
         if tv[1]:
-            lst = [_[0] if _[1] else LogicalNot(_[0]) for _ in tv[0]]
-            connective = make_conn(lst, LogicalAnd)
+            lst = [_[0] if _[1] else (~_[0]) for _ in tv[0]]
+            connective = make_conn(lst, 'and')
             combos_make_true.append(connective)
 
-    lc1 = make_conn(combos_make_true, LogicalOr)
+    lc1 = make_conn(combos_make_true, 'and')
 
     bfs = BFS(lc1, atomics_bank=atomics_bank)
     bfs.simplify(verbose='progress bar')
@@ -501,7 +505,7 @@ class GenerateLogical:
     def __next__(self):
         next_item = self.queue.get()
         next_connective = next_item[-1]
-        if type(PL(next_connective)) is not LogicalNot:
+        if type(PL(next_connective)) is not LOGICAL_CONNECTIVES['not']:
             str_repr = f"(not {next_connective})"
             self.queue.put((len(str(PL(str_repr))), str_repr))
         for seen_item in self.seen:
@@ -599,11 +603,14 @@ class AtomicsBank:
 
                 if type(prop) not in [Tautology, Falsehood]:
                     # T/F symbol useless
-                    not_prop = LogicalNot(prop)
+                    not_prop = LOGICAL_CONNECTIVES['not'](prop)
                     self.add_prop(not_prop)
                     generated_this_round.append((0, not_prop))
 
-            for logical_connective in [LogicalAnd, LogicalOr, LogicalImplies, LogicalIff]:
+            for logical_connective in LOGICAL_CONNECTIVES.values():
+                if logical_connective == LOGICAL_CONNECTIVES['not']:
+                    continue
+
                 for index1, prop1 in old_props:
                     for index2, prop2 in generated_last_round:
                         i += 1
@@ -619,10 +626,10 @@ class AtomicsBank:
                         if type(prop2) in [Tautology, Falsehood]:
                             continue
 
-                        if logical_connective == LogicalImplies:
+                        if logical_connective == LOGICAL_CONNECTIVES['implies']:
                             # second case
-                            self.add_prop(LogicalImplies(prop2, prop1))
-                            generated_this_round.append((0, LogicalImplies(prop2, prop1)))
+                            self.add_prop(prop2 >> prop1)
+                            generated_this_round.append((0, prop2 >> prop1))
                         # general case
                         self.add_prop(logical_connective(prop1, prop2))
                         generated_this_round.append((0, logical_connective(prop1, prop2)))
@@ -686,7 +693,7 @@ class AtomicsBank:
 
 
 if __name__ == '__main__':
-    num_variables = 4
+    num_variables = 3
     atomics = [PL(chr(ord("A") + i)) for i in range(num_variables)]
     ab = AtomicsBank(atomics,
                      f'/Users/kallatt/GitHub/Logic/Propositional/'
