@@ -168,7 +168,6 @@ class Derivation:
 
                 new_assumptions = derivation_step.derivation.assumptions[::] + environment[::]
 
-                print(type(new_assumptions))
                 new_assumptions: list[Evaluable]
                 new_assumptions = [
                     new_assumptions[i] for i in range(len(new_assumptions)) if
