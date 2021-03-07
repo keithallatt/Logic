@@ -1,4 +1,4 @@
-from Propositional.derivations import *
+from kLogic.Propositional.derivations import *
 
 PL = parse_logical
 

@@ -1,4 +1,4 @@
-from Propositional.derivations import *
+from kLogic.Propositional.derivations import *
 
 
 class BFSDirectDerivation:

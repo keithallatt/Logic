@@ -1,0 +1,20 @@
+{
+    "times": {
+        "unicode": "\u00d7"
+    },
+    "divides": {
+        "unicode": "\u00f7"
+    },
+    "not equal": {
+        "unicode": "\u2260"
+    },
+    "leq": {
+        "unicode": "\u2264"
+    },
+    "geq": {
+        "unicode": "\u2265"
+    },
+    "emptyset": {
+        "unicode": "\u2205"
+    }
+}

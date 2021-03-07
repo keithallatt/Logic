@@ -1,0 +1,17 @@
+{
+    "and": {
+        "unicode": "\u2227"
+    },
+    "or": {
+        "unicode": "\u2228"
+    },
+    "implies": {
+        "unicode": "\u2192"
+    },
+    "iff": {
+        "unicode": "\u2194"
+    },
+    "not": {
+        "unicode": "\u00ac"
+    }
+}

@@ -1,49 +1,54 @@
 from __future__ import annotations
 from typing import Union
-from Propositional.logical import LogicalException, LOGICAL_SYMBOLS, LOGICAL_CONNECTIVES
+from kLogic.Propositional.logical import LogicalException, LOGICAL_SYMBOLS, LOGICAL_CONNECTIVES
+# relative import
+from kLogic import symbolic
 
-PREDICATE_SYMBOLS = {
-    'forall': u'\u2200',
-    'exists': u'\u2203',
-    'exists unique': u'\u2203!',
-}
-
-MATH_SYMBOLS = {
-    'times': u'\u00D7',
-}
+PREDICATE_SYMBOLS = symbolic.PredicateSymbolSet()
+MATH_SYMBOLS = symbolic.MathSymbolSet()
 
 # Predicates
 
-
 class Predicate:
+    """ Logical Predicate in FOL. """
     def __init__(self):
+        """ Create an arbitrary predicate object """
         pass
 
     def __and__(self, other):
+        """ Returns (self and other) """
         return PREDICATE_CONNECTIVES['and'](self, other)
 
     def __rand__(self, other):
+        """ Returns (self and other) """
         return self.__and__(other)
 
     def __or__(self, other):
+        """ Returns (self or other) """
         return PREDICATE_CONNECTIVES['or'](self, other)
 
     def __ror__(self, other):
+        """ Returns (self or other) """
         return self.__or__(other)
 
     def __invert__(self):
+        """ Returns (not self) """
         return PREDICATE_CONNECTIVES['not'](self)
 
     def __rshift__(self, other):
+        """ Returns (self implies other) """
         return PREDICATE_CONNECTIVES['implies'](self, other)
 
     def __lshift__(self, other):
+        """ Returns (self if other) """
         return PREDICATE_CONNECTIVES['implies'](other, self)
 
     def __xor__(self, other):
+        """ Returns (self if and only if other) """
         return PREDICATE_CONNECTIVES['iff'](self, other)
 
     def evaluate(self, context: dict):
+        """ Evaluate a predicate and return a boolean. """
         pass
 
     def __str__(self):
@@ -51,6 +56,9 @@ class Predicate:
 
 
 class Equality(Predicate):
+    """ Defines an equality relation (the basic relation included in FOL)
+        x = y if and only if x^M = y^M in the context M (where x^M, y^M are
+        the interpretations of x and y in the context set M). """
     def __init__(self, lhs: Term, rhs: Term):
         super().__init__()
         self.lhs = lhs
@@ -67,7 +75,8 @@ class Equality(Predicate):
 
 def __generate_connective__(name: str):
     """
-
+        Generate a FOL logical connective, such as the propositional logic
+        connectives.
     """
     name, connective = LOGICAL_SYMBOLS[name], LOGICAL_CONNECTIVES[name]
 
@@ -96,7 +105,6 @@ PREDICATE_CONNECTIVES = {
 
 
 # Terms
-
 
 class Term:
     """  """
@@ -152,8 +160,14 @@ class Function(Term):
             return str(self)
 
 
-# Quantifiers
+# Relations
 
+class Relation(Predicate):
+    def __init__(self):
+        super().__init__()
+
+
+# Quantifiers
 
 class Quantifier(Predicate):
     def __init__(self, sub_pred: Predicate, variable: Variable, domain: list = None):
@@ -218,6 +232,11 @@ class UniqueExistential(Quantifier):
 
 
 if __name__ == '__main__':
+    for symbol, unicode in MATH_SYMBOLS.items():
+        print(symbol, unicode, hex(ord(unicode)))
+
+    exit(0)
+
     x = Variable('x')
     y = Variable('y')
     z = Variable('z')

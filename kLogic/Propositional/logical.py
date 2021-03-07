@@ -1,26 +1,12 @@
 from __future__ import annotations
 from abc import abstractmethod
 from typing import Union, Callable
+# relative import
+from kLogic import symbolic
 
 # Unicode logical symbols (propositional logic)
-LOGICAL_SYMBOLS = {
-    "and": u'\u2227',
-    "or": u'\u2228',
-    "implies": u'\u2192',
-    "iff": u'\u2194',
-    "not": u'\u00AC'
-}
-
-TRUTH_SYMBOLS = {
-    't': u'\u22A4',
-    'f': u'\u22A5',
-    'true': u'\u22A4',
-    'false': u'\u22A5',
-    'tautology': u'\u22A4',
-    'falsehood': u'\u22A5',
-    "proves": u'\u22A2',
-    "models": u'\u22A8'
-}
+LOGICAL_SYMBOLS = symbolic.LogicalSymbolSet()
+TRUTH_SYMBOLS = symbolic.TruthSymbolSet()
 
 
 class LogicalException(Exception):
@@ -679,7 +665,7 @@ def parse_logical(str_repr: str,
     if operation == "not":
         if sections[0] is not None and sections[0] != Atom("None", truth_value=False):
             raise LogicalException("'Not' preceded by sentence.")
-        return LOGICAL_CONNECTIVES['not'](sections[1])
+        return ~sections[1]
     elif operation in LOGICAL_SYMBOLS.keys():
         return LOGICAL_CONNECTIVES[operation](sections[0], sections[1])
     else:

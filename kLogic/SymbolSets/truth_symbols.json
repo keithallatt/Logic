@@ -1,0 +1,26 @@
+{
+    "t": {
+        "unicode": "\u22a4"
+    },
+    "f": {
+        "unicode": "\u22a5"
+    },
+    "true": {
+        "unicode": "\u22a4"
+    },
+    "false": {
+        "unicode": "\u22a5"
+    },
+    "tautology": {
+        "unicode": "\u22a4"
+    },
+    "falsehood": {
+        "unicode": "\u22a5"
+    },
+    "proves": {
+        "unicode": "\u22a2"
+    },
+    "models": {
+        "unicode": "\u22a8"
+    }
+}

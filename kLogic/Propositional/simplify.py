@@ -1,4 +1,4 @@
-from Propositional.derivations import *
+from kLogic.Propositional.derivations import *
 from queue import PriorityQueue
 import time
 from itertools import count
@@ -491,7 +491,7 @@ def gen_connective_from_truth_table(truth_table, atomics_bank=None):
 
 
 class GenerateLogical:
-    def __init__(self, _atomics: list[Evaluable]):
+    def __init__(self, _atomics: list[Atom]):
         self.atomics = _atomics
         self.queue = PriorityQueue()
         self.seen = set()
@@ -695,10 +695,7 @@ class AtomicsBank:
 if __name__ == '__main__':
     num_variables = 3
     atomics = [PL(chr(ord("A") + i)) for i in range(num_variables)]
-    ab = AtomicsBank(atomics,
-                     f'/Users/kallatt/GitHub/Logic/Propositional/'
-                     f'simplest/{num_variables}variableSimplest.txt')
-    ab.save_to_file()
+    ab = AtomicsBank(atomics)
     gl = GenerateLogical(atomics)
 
     start_time = time.time()
@@ -709,34 +706,10 @@ if __name__ == '__main__':
     bannerT = "\u250C" + "\u2500" * (len(banner_label)-2) + "\u2510"
     bannerB = "\u2514" + "\u2500" * (len(banner_label)-2) + "\u2518"
 
-    print(bannerT)
-    print(banner_label)
-    print(bannerB)
-
     loading = '█' * 5 + ' ' * 10
 
     finished = False
     transition = False
-
-    print(f"Filled before: {ab.size()} / {ab.capacity()}")
-
-    print("-"*50)
-
-    try:
-        ab.closure()
-    except KeyboardInterrupt:
-        ab.save_to_file()
-        print("saved")
-        exit(0)
-
-    print("-"*50)
-
-    print(f"Filled after: {ab.size()} / {ab.capacity()}")
-
-    ab.save_to_file()
-
-    exit(0)
-
 
     def ppb():
         global last_added

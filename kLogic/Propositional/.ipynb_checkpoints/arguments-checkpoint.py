@@ -1,4 +1,4 @@
-from Propositional.logical import *
+from kLogic.Propositional.logical import *
 import warnings
 import inspect
 import sys

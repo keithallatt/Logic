@@ -1,4 +1,4 @@
-from Propositional.logical import *
+from kLogic.Propositional.logical import *
 import warnings
 import inspect
 import sys
@@ -165,6 +165,8 @@ class HypotheticalSyllogism(Argument):
         logical_implies = LOGICAL_CONNECTIVES['implies']
         l1, l2 = self.ls[:2]
         if type(l1) is logical_implies and type(l2) is logical_implies:
+            l1: LogicalConnective
+            l2: LogicalConnective
             p = l1.components[0]
             q1 = l1.components[1]
             q2 = l2.components[0]
@@ -186,6 +188,7 @@ class ModusTollendoPonens(Argument):
         l1, l2 = self.ls[:2]
 
         if type(l1) is logical_or:
+            l1: LogicalConnective
             p, q = l1.components[:2]
 
             if l2 == ~p or p == ~l2:
@@ -194,6 +197,7 @@ class ModusTollendoPonens(Argument):
                 return p
 
         if type(l2) is logical_or:
+            l2: LogicalConnective
             p, q = l2.components[:2]
 
             if l1 == ~p or p == ~l1:
@@ -230,6 +234,7 @@ class Simplification(Argument):
         l1, l2 = self.ls[:2]
 
         if type(l1) is logical_and:
+            l1: LogicalConnective
             p, q = l1.components[:2]
 
             if l2 == p:
@@ -239,6 +244,7 @@ class Simplification(Argument):
                 self.rp = [l1]
                 return l2
         if type(l2) is logical_and:
+            l2: LogicalConnective
             p, q = l2.components[:2]
 
             if l1 == p:
@@ -265,6 +271,7 @@ class Addition(Argument):
         l1, l2 = self.ls[:2]
 
         if type(l1) is logical_or:
+            l1: LogicalConnective
             p, q = l1.components[:2]
 
             if l2 == p:
@@ -272,6 +279,7 @@ class Addition(Argument):
             if l2 == q:
                 return l1
         if type(l2) is logical_or:
+            l2: LogicalConnective
             p, q = l2.components[:2]
 
             if l1 == p:
@@ -320,6 +328,8 @@ class BidirectionalConditional(Argument):
 
         if type(l1) is logical_iff and type(l2) is logical_implies:
             # first two are elimination
+            l1: LogicalConnective
+            l2: LogicalConnective
             p1, q1 = l1.components[:2]
             p2, q2 = l2.components[:2]
 
@@ -331,6 +341,8 @@ class BidirectionalConditional(Argument):
                 return l2
         if type(l2) is logical_iff and type(l1) is logical_implies:
             # elimination
+            l1: LogicalConnective
+            l2: LogicalConnective
             p1, q1 = l1.components[:2]
             p2, q2 = l2.components[:2]
 

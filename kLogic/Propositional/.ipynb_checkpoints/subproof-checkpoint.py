@@ -1,4 +1,4 @@
-from Propositional.derivations import *
+from kLogic.Propositional.derivations import *
 
 if __name__ == '__main__':
     PL = parse_logical

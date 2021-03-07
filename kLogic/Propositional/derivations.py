@@ -1,6 +1,6 @@
 from __future__ import annotations
 from sortedcontainers import SortedDict
-from Propositional.arguments import *
+from kLogic.Propositional.arguments import *
 import re
 
 

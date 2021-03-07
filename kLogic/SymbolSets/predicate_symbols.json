@@ -1,0 +1,11 @@
+{
+    "forall": {
+        "unicode": "\u2200"
+    },
+    "exists": {
+        "unicode": "\u2203"
+    },
+    "exists unique": {
+        "unicode": "\u2203!"
+    }
+}
