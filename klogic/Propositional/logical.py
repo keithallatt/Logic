@@ -1,8 +1,17 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Propositional logic module. Contains basic atomic propositions
+
+@author: Keith Allatt
+@version: 1.11
+"""
+
 from __future__ import annotations
 from abc import abstractmethod
 from typing import Union, Callable
-# relative import
-from kLogic import symbolic
+from klogic import symbolic
+import copy
 
 # Unicode logical symbols (propositional logic)
 LOGICAL_SYMBOLS = symbolic.LogicalSymbolSet()
@@ -18,49 +27,143 @@ class LogicalException(Exception):
 
 # enforce that logical connectives must be binary, unless exempt.
 # if this is false, then any connective can have any number of parameters.
+# If this is ever false, then some behaviour
 ENFORCE_BINARY_OPERATIONS = True
 
 
 class Evaluable:
     """ A boolean evaluable expression. """
+    def __init__(self, name):
+        self.name = name
+
     @abstractmethod
     def __bool__(self):
+        """
+        Return the boolean evaluation of this evaluable object.
+
+        :return: the truth value of 'self'
+        """
         pass
 
     def __and__(self, other):
+        """
+        Returns a logical 'and' connective between these elements.
+
+        :param other: another evaluable to connect to.
+        :return: 'self' and 'other'
+        """
         return LOGICAL_CONNECTIVES['and'](self, other)
     
     def __rand__(self, other):
+        """
+        Returns a logical 'and' connective between these elements.
+
+        :param other: another evaluable to connect to.
+        :return: 'self' and 'other'
+        """
         return self.__and__(other)
     
     def __or__(self, other):
+        """
+        Returns a logical 'or' connective between these elements.
+
+        :param other: another evaluable to connect to.
+        :return: 'self' or 'other'
+        """
         return LOGICAL_CONNECTIVES['or'](self, other)
     
     def __ror__(self, other):
+        """
+        Returns a logical 'or' connective between these elements.
+
+        :param other: another evaluable to connect to.
+        :return: 'self' or 'other'
+        """
         return self.__or__(other)
     
     def __invert__(self):
+        """
+        Returns a logical 'not' connective between these elements.
+
+        :return: not 'self'
+        """
         return LOGICAL_CONNECTIVES['not'](self)
 
     def __rshift__(self, other):
+        """
+        Returns a logical 'implies' connective between these elements.
+
+        :param other: another evaluable to connect to.
+        :return: 'self' implies 'other'
+        """
         return LOGICAL_CONNECTIVES['implies'](self, other)
 
     def __lshift__(self, other):
+        """
+        Returns a logical 'implies' connective between these elements.
+
+        :param other: another evaluable to connect to.
+        :return: 'self' is implied by 'other'
+        """
         return LOGICAL_CONNECTIVES['implies'](other, self)
 
     def __xor__(self, other):
+        """
+        Returns a logical 'iff' connective between these elements.
+
+        (XOR bitwise operator was the last available. Technically xor is the
+        negation of iff, (which is equivalent to not (A xor B), or A x-nor B).
+
+        :param other: another evaluable to connect to.
+        :return: 'self' if and only if 'other'
+        """
         return LOGICAL_CONNECTIVES['iff'](self, other)
 
     def atoms_contained(self):
-        return []
+        """
+        Get the atomic propositions contained in this evaluable.
+
+        :return: A list of contained atomic propositions.
+        """
+        return []  # no atoms contained in a generic evaluable.
 
     def truth_table(self, atomics, regen=False):
-        return []
+        """
+        Generate the truth table for this example with respect to these atomics.
+
+        :param atomics: A list to generate the truth table with respect to.
+        :param regen: Regenerate the truth table even if the atomics are the same.
+        :return: A list of truth table rows, each row consisting of a tuple, the first
+                 component being a list of atomic proposition names and their truth
+                 values, the second component being the truth value of the evaluable.
+        """
+        raise NotImplementedError("Cannot get truth table for generic evaluable.")
 
     def truth_hash(self, atomics, regen=False):
-        return -1
+        """
+        Generate a hash corresponding to the truth table for
+        this example with respect to these atomics.
+
+        :param atomics: A list to generate the truth hash with respect to.
+        :param regen: Regenerate the truth hash even if the atomics are the same.
+        :return: an integer 'n' such that 0 <= n < 2^(number of atoms), corresponding
+                 to a binary number found by reading the truth value rows, rows with
+                 True corresponding to the binary digit 1 and False corresponding to 0.
+                 MSD of the hash corresponds to the truth value of the propositions
+                 when all propositions are true, and LSD of the hash corresponds to
+                 the truth value of the proposition
+        """
+        raise NotImplementedError("Cannot get truth table hash for generic evaluable.")
 
     def equiv(self, other: Evaluable, regen=False):
+        """
+        Return if two evaluables are equivalent, by checking the truth table generated
+
+
+        :param other:
+        :param regen:
+        :return:
+        """
         self_atoms = set(self.atoms_contained())
         other_atoms = set(other.atoms_contained())
         atomics = list(self_atoms.union(other_atoms))
@@ -75,12 +178,23 @@ class Evaluable:
             str(_) for _ in other_truth
         }
 
-        diff = self_str.difference(other_str).union(other_str.difference(self_str))
-
-        return diff == set()
+        return self_str.symmetric_difference(other_str) == set()
 
     def __hash__(self):
         return hash(self.__str__())
+
+    def copy(self):
+        """ Copy an evaluable. If this is being used, just use the base deep copy. """
+        return copy.deepcopy(self)
+
+    def set_atom_truth_values(self, context):
+        raise NotImplementedError("Cannot set atomic truth values to generic evaluable.")
+
+    def pl_ify(self):
+        raise NotImplementedError("Cannot PL-ify to generic evaluable.")
+
+    def replace(self, forms):
+        raise NotImplementedError("Cannot replace in generic evaluable.")
 
 
 class Tautology(Evaluable):
@@ -88,7 +202,7 @@ class Tautology(Evaluable):
         return True
 
     def __str__(self):
-        return TRUTH_SYMBOLS['tautology']
+        return str(TRUTH_SYMBOLS['tautology'])
 
     def __repr__(self):
         return self.__str__()
@@ -116,13 +230,22 @@ class Tautology(Evaluable):
     def truth_hash(self, atomics, regen=False):
         return 2 ** len(atomics) - 1
 
+    def set_atom_truth_values(self, context):
+        pass
+
+    def pl_ify(self):
+        raise NotImplementedError("Cannot PL-ify Tautologies.")
+
+    def replace(self, forms):
+        raise NotImplementedError("Cannot replace in Tautologies.")
+
 
 class Falsehood(Evaluable):
     def __bool__(self):
         return False
 
     def __str__(self):
-        return TRUTH_SYMBOLS['falsehood']
+        return str(TRUTH_SYMBOLS['falsehood'])
 
     def __repr__(self):
         return self.__str__()
@@ -150,13 +273,22 @@ class Falsehood(Evaluable):
     def truth_hash(self, atomics, regen=False):
         return 0
 
+    def set_atom_truth_values(self, context):
+        pass
+
+    def pl_ify(self):
+        raise NotImplementedError("Cannot PL-ify Falsehood.")
+
+    def replace(self, forms):
+        raise NotImplementedError("Cannot replace in Falsehood.")
+
 
 class Atom(Evaluable):
     """ Logical Atom. Represents a variable / truth value.
         This is the smallest unit in 0th order logic. """
     def __init__(self, name: str, truth_value: bool = None):
+        super(Atom, self).__init__(name)
         self.truth_value = truth_value
-        self.name = name
         self.truth_table_cached = None
         self.truth_hash_cached = None
 
@@ -166,8 +298,7 @@ class Atom(Evaluable):
         return self.truth_value
 
     def replace(self, old: Union[list[tuple[Evaluable, Evaluable]], Evaluable] = None,
-                new: Evaluable = None,
-                lst: list[tuple[Evaluable, Evaluable]] = None):
+                new: Evaluable = None, lst: list[tuple[Evaluable, Evaluable]] = None):
         if type(old) is list:
             if lst is None:
                 lst = old[::]
@@ -190,12 +321,13 @@ class Atom(Evaluable):
 
     def copy(self):
         new_atom = Atom(self.name, self.truth_value)
-        new_atom.truth_table_cached = self.truth_table_cached
-        new_atom.truth_hash_cached = self.truth_hash_cached
+        new_atom.truth_table_cached = copy.deepcopy(self.truth_table_cached)
+        new_atom.truth_hash_cached = copy.deepcopy(self.truth_hash_cached)
         return new_atom
 
     def search(self, form: Evaluable):
         if type(form) is Atom:
+            form: Atom
             return [(form.copy(), self.copy())]
         return []
 
@@ -262,7 +394,7 @@ class Atom(Evaluable):
                 other.truth_value is None)
 
     def __str__(self):
-        return self.name
+        return str(self.name)
     
     def __repr__(self):
         return str(self)
@@ -275,6 +407,9 @@ class Atom(Evaluable):
 
     def __hash__(self):
         return hash(self.__str__())
+
+    def pl_ify(self):
+        return self.name
 
     @classmethod
     def generate_atomics_set(cls, number_of: int, start_at='A'):
@@ -306,6 +441,7 @@ class LogicalConnective(Evaluable):
             when enforcing the binary property? Default is 'reject', although 'duplicate' is also
             accepted (repeat elements until we have enough).
         """
+        super(LogicalConnective, self).__init__("Generic")
 
         self.components = components
         self.truth_table_cached = None
@@ -329,7 +465,6 @@ class LogicalConnective(Evaluable):
                 elif overfull_method == 'reject':
                     raise LogicalException("Overfull components box.")
 
-        self.name = "Generic"
         self.exempt = exempt_bin_rest
         self.func = None
 
@@ -362,8 +497,9 @@ class LogicalConnective(Evaluable):
 
         self_copy = self.copy()
 
+        self.components: list[LogicalConnective]
         self_copy.components = [
-            component.copy().replace(lst=lst)
+            component.replace(lst=lst)
             for component in self.components
         ]
 
@@ -391,6 +527,8 @@ class LogicalConnective(Evaluable):
 
         if type(form) is Atom:
             return [(form.copy(), self.copy())]
+
+        form: LogicalConnective
 
         if form.name != self.name:
             return []
@@ -497,18 +635,14 @@ class LogicalConnective(Evaluable):
         return self.truth_hash_cached
 
     def pl_ify(self):
-        keyword = None
-        for key, symbol in LOGICAL_SYMBOLS.items():
-            if symbol == self.name:
+        for key in LOGICAL_SYMBOLS.keys():
+            if LOGICAL_SYMBOLS[key] == self.name:
                 keyword = key
                 break
         else:
-            print("couldn't find.")
+            raise LogicalException(f"Couldn't find {self.name} in logical symbol set..")
 
-        component_strings = [
-            component.name if type(component) is Atom else component.pl_ify()
-            for component in self.components
-        ]
+        component_strings = [component.pl_ify() for component in self.components]
 
         if keyword == 'not':
             return f'(not {component_strings[0]})'
@@ -537,7 +671,7 @@ class LogicalConnective(Evaluable):
         if ENFORCE_BINARY_OPERATIONS and not self.exempt:
             return "(" + \
                    str(self.components[0]).split(":")[0] + \
-                   " " + self.name + " " + \
+                   " " + str(self.name) + " " + \
                    str(self.components[1]).split(":")[0] + \
                    ")"
         return f"{self.name}{component_str}"
@@ -547,6 +681,13 @@ class LogicalConnective(Evaluable):
     
     def __hash__(self):
         return hash(self.__str__())
+
+    @staticmethod
+    def is_instance(instance, name):
+        if name not in list(LOGICAL_SYMBOLS.keys()):
+            return False
+
+        return str(instance.name) == str(LOGICAL_SYMBOLS[name])
 
 
 def __generate_connective__(name: str, func: Callable = None, **kwargs):
@@ -597,9 +738,18 @@ LOGICAL_CONNECTIVES = {
 }
 
 
-def parse_logical(str_repr: str,
-                  surround_atoms: bool = True,
+def parse_logical(str_repr: str, surround_atoms: bool = True,
                   expect_none: bool = False) -> Union[Evaluable, LogicalConnective, Atom]:
+    """
+    Parse logical propositions in text format. All atomic values must use upper case characters,
+    while all other characters should be lowercase.
+
+    :param str_repr: The string to parse.
+    :param surround_atoms: Whether or not to surround atomic propositions with parentheses.
+                           This is necessary initially, to ensure
+    :param expect_none:
+    :return:
+    """
     if surround_atoms:
         return parse_logical("".join([
             "(" + char + ")" if char.isupper() else char for char in str_repr
@@ -651,7 +801,7 @@ def parse_logical(str_repr: str,
                           if len(string[0].strip()) > 0]
 
     if len(zero_depth_strings) != 1:
-        raise LogicalException("Only one connective allowed at each depth.")
+        raise LogicalException("Only one connective allowed in each set of parentheses.")
 
     operation = zero_depth_strings[0][0]
 

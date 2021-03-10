@@ -1,4 +1,14 @@
-from kLogic.Propositional.logical import *
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Basic and some derived arguments. These are the basic tools from which we can derive
+other arguments / theorems.
+
+@author: Keith Allatt
+@version: 1.1
+"""
+
+from klogic.Propositional.logical import *
 import warnings
 import inspect
 import sys

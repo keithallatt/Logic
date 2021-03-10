@@ -1,7 +1,17 @@
-from Propositional.logical import Atom
-from Propositional.derivations import DirectDerivation, ConditionalDerivation, IndirectDerivation
-from Propositional.arguments import Addition, ModusPonens, ModusTollens, ModusTollendoPonens, Conjunction, Contradiction
-from Propositional.theorem import DisjunctionElimination, TertiumNonDatur, Theorem
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+
+@author: Keith Allatt
+@version: 1.1
+"""
+
+
+from klogic.Propositional.logical import Atom
+from klogic.Propositional.derivations import DirectDerivation, ConditionalDerivation, IndirectDerivation
+from klogic.Propositional.arguments import Addition, ModusPonens, ModusTollens, ModusTollendoPonens, \
+                                    Conjunction, Contradiction
+from klogic.Propositional.theorem import DisjunctionElimination, TertiumNonDatur, Theorem
 
 if __name__ == '__main__':
     """

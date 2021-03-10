@@ -1,4 +1,13 @@
-from kLogic.Propositional.derivations import *
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+
+@author: Keith Allatt
+@version: 1.1
+"""
+
+
+from klogic.Propositional.derivations import *
 
 PL = parse_logical
 
@@ -86,17 +95,3 @@ DeMorgansLaws2 = Theorem("De Morgans 2", DirectDerivation(
         Conjunction(PL("not A"), PL("not B"))
     ]
 ))
-
-
-if __name__ == '__main__':
-    for derived in [
-        DisjunctionElimination,
-        TertiumNonDatur,
-        LawOfNonContradiction,
-        DeMorgansLaws1,
-        DeMorgansLaws2
-    ]:
-        print("-" * 25)
-        print(derived.argument_name)
-
-        print(derived.argument.verify())

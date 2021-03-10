@@ -1,4 +1,12 @@
-from kLogic.Propositional.derivations import *
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+
+@author: Keith Allatt
+@version: 1.1
+"""
+
+from klogic.Propositional.derivations import *
 from queue import PriorityQueue
 import time
 from itertools import count
@@ -374,8 +382,6 @@ class FlushNegation(Simplification):
     ¬(A ∨ B) -> (¬A ∧ ¬B)
     ¬(A ∧ B) -> (¬A ∨ ¬B)
     ¬(A ↔ B) -> ((A ∧ ¬B) ∨ (¬A ∧ B))
-
-
     """
     def __init__(self, proposition: Evaluable):
         super().__init__(proposition)
@@ -460,17 +466,17 @@ class FlushNegation(Simplification):
 
 
 def gen_connective_from_truth_table(truth_table, atomics_bank=None):
-    def make_conn(_lst, conn, fallback=Falsehood()):
-        conn = LOGICAL_CONNECTIVES.get(conn)
+    def make_conn(_lst, conn_name, fallback=Falsehood()):
+        conn = LOGICAL_CONNECTIVES.get(conn_name)
         if conn is None:
-            raise LogicalException("Can't find connective: "+str(conn))
+            raise LogicalException("Can't find connective: "+str(conn_name))
         if len(_lst) == 0:
             return fallback
         if len(_lst) == 1:
             return _lst[0]
         m = len(_lst) // 2
         lhs, rhs = _lst[:m], _lst[m:]
-        return conn(make_conn(lhs, conn), make_conn(rhs, conn))
+        return conn(make_conn(lhs, conn_name), make_conn(rhs, conn_name))
 
     combos_make_true = []
 
@@ -539,8 +545,11 @@ class AtomicsBank:
         existing = self.propositions.get(index)
 
         if existing is not None:
-            if len(str(existing)) <= len(str(evaluable)):
-                return None
+            try:
+                if len(str(existing)) <= len(str(evaluable)):
+                    return None
+            except TypeError:
+                print(existing, evaluable)
 
         self.propositions.update({index: evaluable})
 
@@ -660,6 +669,9 @@ class AtomicsBank:
                 self.lowest_unfilled += 1
 
     def save_to_file(self):
+        if self.file_out is None:
+            raise Exception("File null in save_to_file.")
+
         json_formatted_propositions = {}
 
         for index, proposition in self.propositions.items():
@@ -693,7 +705,7 @@ class AtomicsBank:
 
 
 if __name__ == '__main__':
-    num_variables = 3
+    num_variables = 2
     atomics = [PL(chr(ord("A") + i)) for i in range(num_variables)]
     ab = AtomicsBank(atomics)
     gl = GenerateLogical(atomics)
@@ -710,14 +722,16 @@ if __name__ == '__main__':
 
     finished = False
     transition = False
+    last_index = "None"
 
     def ppb():
         global last_added
         global transition
         global time_last_addition
         global loading
+        global last_index
 
-        index_str = last_index = str(ab.add_prop(e))
+        index_str = str(ab.add_prop(e))
         if index_str != 'None':
             last_index = index_str
             last_added = str(e)
@@ -763,15 +777,9 @@ if __name__ == '__main__':
         else:
             e = next(gl)
 
-        if time.time() - autosave_time_start > 120:
-            autosave_time_start = time.time()
-            ab.save_to_file()
-            print(f"\nSaving after {e}")
-
         finished = ppb()
 
     if not finished:
         ppb()
 
-    ab.save_to_file()
     print(ab)

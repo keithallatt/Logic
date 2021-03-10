@@ -1,0 +1,26 @@
+{
+    "times": {
+        "unicode": "\u00d7",
+        "doc": "Times Symbol. Represents the symbol for multiplication of elements."
+    },
+    "divides": {
+        "unicode": "\u00f7",
+        "doc": "Division Symbol. Represents the symbol for division of elements."
+    },
+    "not equal": {
+        "unicode": "\u2260",
+        "doc": "Inequality Symbol. Represents the symbol for non-equality of elements."
+    },
+    "leq": {
+        "unicode": "\u2264",
+        "doc": "Less than or equal Symbol. Represents the symbol for ordering in ascending order."
+    },
+    "geq": {
+        "unicode": "\u2265",
+        "doc": "Greater than or equal Symbol. Represents the symbol for ordering in descending order."
+    },
+    "emptyset": {
+        "unicode": "\u2205",
+        "doc": "Empty set Symbol. Represents the symbol for a set containing no elements."
+    }
+}

@@ -1,0 +1,22 @@
+{
+    "and": {
+        "unicode": "\u2227",
+        "doc": "And Symbol. Represents the symbol for a conjunction."
+    },
+    "or": {
+        "unicode": "\u2228",
+        "doc": "Or Symbol. Represents the symbol for a disjunction."
+    },
+    "implies": {
+        "unicode": "\u2192",
+        "doc": "Implication Symbol. Represents the symbol for a material implication."
+    },
+    "iff": {
+        "unicode": "\u2194",
+        "doc": "Equivalence Symbol. Represents the symbol for a material equivalence."
+    },
+    "not": {
+        "unicode": "\u00ac",
+        "doc": "Negation Symbol. Represents the symbol for a logical negation."
+    }
+}

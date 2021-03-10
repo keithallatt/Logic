@@ -1,4 +1,12 @@
-from kLogic.Propositional.derivations import *
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+
+@author: Keith Allatt
+@version: 1.1
+"""
+
+from klogic.Propositional.derivations import *
 
 
 class BFSDirectDerivation:

@@ -1,6 +1,25 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Keeps track of symbols used throughout other files. Allows serialization and addition of
+metadata to each symbol.
+
+@author: Keith Allatt
+@version: 1.1
+"""
+
 from typing import Union
 import json
+import abc
 import os.path
+
+
+class Symbolic:
+    """ Global class type for serialization. """
+    def __init__(self, str_repr, item):
+        self.str_repr = str_repr
+        self.item = item
+
 
 class SymbolSet:
     """ Symbol set that comes with more information per symbol. """
@@ -54,8 +73,31 @@ class SymbolSet:
     def keys(self):
         return self._symbol_set.keys()
 
+    def __eq__(self, other):
+        if type(other) != SymbolSet:
+            return False
+        other: SymbolSet
+        return self._symbol_set == other._symbol_set
+
     def __getitem__(self, item):
-        return self._symbol_set[item]['unicode']
+        class UnicodeSymbol(Symbolic, metaclass=abc.ABCMeta):
+            def __init__(self, str_repr, item_):
+                super().__init__(str_repr, item_)
+
+            def __str__(self):
+                return self.str_repr
+
+            def __eq__(self, other):
+                return str(self) == str(other)
+
+        symbol = UnicodeSymbol(self._symbol_set[item]['unicode'], item)
+
+        if 'doc' in self._symbol_set[item].keys():
+            symbol.__doc__ = self._symbol_set[item]['doc']
+        else:
+            symbol.__doc__ = f"""Symbol [ {item} ] -> [ {str(symbol)} ]"""
+
+        return symbol
 
     def __str__(self):
         return json.dumps(self._symbol_set, indent=4)
@@ -68,18 +110,18 @@ class LogicalSymbolSet(SymbolSet):
 
 
 class MathSymbolSet(SymbolSet):
-    """ Logical Connective symbols. """
+    """ General Mathematical symbols. """
     def __init__(self, *args):
         super().__init__('SymbolSets/math_symbols.json')
 
 
 class PredicateSymbolSet(SymbolSet):
-    """ Logical Connective symbols. """
+    """ Predicate Logical symbols. """
     def __init__(self, *args):
         super().__init__('SymbolSets/predicate_symbols.json')
 
 
 class TruthSymbolSet(SymbolSet):
-    """ Logical Connective symbols. """
+    """ Truth value symbols. """
     def __init__(self, *args):
         super().__init__('SymbolSets/truth_symbols.json')

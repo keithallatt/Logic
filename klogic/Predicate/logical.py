@@ -1,13 +1,21 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+
+@author: Keith Allatt
+@version: 1.1
+"""
+
 from __future__ import annotations
 from typing import Union
-from kLogic.Propositional.logical import LogicalException, LOGICAL_SYMBOLS, LOGICAL_CONNECTIVES
-# relative import
-from kLogic import symbolic
+from klogic.Propositional.logical import LogicalException, LOGICAL_SYMBOLS, LOGICAL_CONNECTIVES
+from klogic import symbolic
 
 PREDICATE_SYMBOLS = symbolic.PredicateSymbolSet()
 MATH_SYMBOLS = symbolic.MathSymbolSet()
 
 # Predicates
+
 
 class Predicate:
     """ Logical Predicate in FOL. """
@@ -234,8 +242,6 @@ class UniqueExistential(Quantifier):
 if __name__ == '__main__':
     for symbol, unicode in MATH_SYMBOLS.items():
         print(symbol, unicode, hex(ord(unicode)))
-
-    exit(0)
 
     x = Variable('x')
     y = Variable('y')

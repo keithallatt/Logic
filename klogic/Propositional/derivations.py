@@ -1,6 +1,16 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Arbitrary derivations, either direct, conditional or indirect. Each derivation requires a
+set of axioms, a consequence, and a list of arguments and subderivations
+
+@author: Keith Allatt
+@version: 1.1
+"""
+
 from __future__ import annotations
 from sortedcontainers import SortedDict
-from kLogic.Propositional.arguments import *
+from klogic.Propositional.arguments import *
 import re
 
 
@@ -38,7 +48,7 @@ class Derivation:
             str(axiom) for axiom in self.axioms
         ])
 
-        return " ".join([axioms, TRUTH_SYMBOLS['proves'], str(self.consequence)])
+        return " ".join([axioms, str(TRUTH_SYMBOLS['proves']), str(self.consequence)])
             
     def __repr__(self):
         return self.__str__()
@@ -67,6 +77,7 @@ class Derivation:
                     print(logical_connective)
 
             else:
+                logical_connective: LogicalConnective
                 for component in logical_connective.components:
                     set_atoms_truth_value(component, context)
 
@@ -84,12 +95,15 @@ class Derivation:
         propositions.append(self.consequence)
 
         while len(propositions) > 0:
+            next_prop: Evaluable
             next_prop = propositions.pop()
 
             if type(next_prop) is Atom:
+                next_prop: Atom
                 if next_prop.name not in [str(atom) for atom in atom_bank.keys()]:
                     atom_bank.update({next_prop: False})
             else:
+                next_prop: LogicalConnective
                 propositions += list(next_prop.components)
 
         atom_ordered = SortedDict(atom_bank)
@@ -261,7 +275,6 @@ class Derivation:
 
                 for component in derivation_components:
                     if component not in environment:
-                        print("Component not in environment", component)
                         justification.append(["Illegal Operation ?? " + str(component), 'xx'])
                         self._final_i = i
                         verification = "Incomplete"
@@ -274,7 +287,7 @@ class Derivation:
 
                             justification.append([" ".join([
                                 str(i) + " " * (len(str(len(self.derivation))) - len(str(i)) + 1),
-                                TRUTH_SYMBOLS['f']]),
+                                str(TRUTH_SYMBOLS['f'])]),
                                 "id " + ", ".join(locations)
                             ])
                             break
@@ -325,7 +338,7 @@ class Derivation:
             ". ".join([str(axiom) for axiom in sorted(list(set(self.axioms[::])),
                                                       key=lambda _: str(_))
                        if axiom not in set(self.assumptions[::])]),
-            TRUTH_SYMBOLS['proves'], consequence_str])
+            str(TRUTH_SYMBOLS['proves']), consequence_str])
 
         max_line_len = Derivation.max_line_len(justification)
 
@@ -400,9 +413,9 @@ class ConditionalDerivation(Derivation):
         assumptions = []
         self.old_consequence = consequence
 
-        assert type(consequence) is LOGICAL_CONNECTIVES['implies']
+        assert LogicalConnective.is_instance(consequence, 'implies')
 
-        consequences: LogicalConnective
+        consequence: LogicalConnective
         assumptions.append(consequence.components[0])
         new_consequence = consequence.components[1]
         self.assumptions_str = str(consequence.components[0])
@@ -416,8 +429,8 @@ class ConditionalDerivation(Derivation):
     def __str__(self):
         string_repr = super().__str__()
         
-        return " ".join([string_repr.split(TRUTH_SYMBOLS['proves'])[0].strip(),
-                         TRUTH_SYMBOLS['proves'], str(self.old_consequence)])
+        return " ".join([string_repr.split(str(TRUTH_SYMBOLS['proves']))[0].strip(),
+                         str(TRUTH_SYMBOLS['proves']), str(self.old_consequence)])
             
     def __repr__(self):
         return self.__str__()

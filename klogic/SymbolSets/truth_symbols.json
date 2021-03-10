@@ -22,5 +22,8 @@
     },
     "models": {
         "unicode": "\u22a8"
+    },
+    "qed": {
+        "unicode": "\u220e"
     }
 }
